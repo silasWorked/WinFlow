@@ -1,6 +1,7 @@
 # WinFlow
 
 [![CI](https://github.com/silasWorked/WinFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/silasWorked/WinFlow/actions/workflows/ci.yml)
+[![Release](https://github.com/silasWorked/WinFlow/actions/workflows/release.yml/badge.svg)](https://github.com/silasWorked/WinFlow/actions/workflows/release.yml)
 
 WinFlow — экспериментальный DSL/скриптовый рантайм для Windows (.wflow).
 
@@ -52,6 +53,9 @@ powershell -ExecutionPolicy Bypass -File WinFlow/WinFlow.Installer/register-wflo
 - Спецификация языка и реальный парсер
 - Модули команд: Env, File, Process, Registry
 - Логи/телеметрия, строгие коды возврата, тесты
+
+## Релизы
+- Готовые сборки публикуются в разделе Releases (workflow `release.yml` собирает win-x64 ZIP из WinFlow.Cli).
 
 ## Документация
 
