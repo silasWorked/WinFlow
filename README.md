@@ -1,5 +1,7 @@
 # WinFlow
 
+[![CI](https://github.com/silasWorked/WinFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/silasWorked/WinFlow/actions/workflows/ci.yml)
+
 WinFlow — экспериментальный DSL/скриптовый рантайм для Windows (.wflow).
 
 ## Структура решений/проектов
