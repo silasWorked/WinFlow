@@ -45,6 +45,16 @@
 - Сигнатура: `file append path=<FILE> content=<TEXT>`
 - Пример: `file append path="out.txt" content=" World"`
 
+### process run
+- Назначение: запустить процесс (фоновый, не ждём завершения)
+- Сигнатура: `process run file=<EXE> args=<ARGS>`
+- Пример: `process run file="notepad.exe" args="readme.txt"`
+
+### process exec
+- Назначение: запустить процесс и ждать завершения; захватить вывод
+- Сигнатура: `process exec file=<EXE> args=<ARGS>`
+- Пример: `process exec file="cmd.exe" args="/c echo test"`
+
 ---
 
 # Формат добавления новых команд (в ядре)

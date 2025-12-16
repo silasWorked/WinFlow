@@ -107,6 +107,48 @@ namespace WinFlow.Core.Runtime
                 System.IO.File.AppendAllText(full, content ?? string.Empty);
                 ctx.Log($"appended {path}");
             });
+
+            // Process module
+            Register("process.run", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("file", out var file))
+                    throw new ArgumentException("process.run requires file=<exe>");
+                cmd.Args.TryGetValue("args", out var args);
+                var proc = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = file,
+                    Arguments = args ?? string.Empty,
+                    WorkingDirectory = ctx.WorkingDirectory,
+                    UseShellExecute = true
+                });
+                ctx.Log($"process run {file} started (PID: {proc?.Id})");
+            });
+
+            Register("process.exec", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("file", out var file))
+                    throw new ArgumentException("process.exec requires file=<exe>");
+                cmd.Args.TryGetValue("args", out var args);
+                var proc = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = file,
+                        Arguments = args ?? string.Empty,
+                        WorkingDirectory = ctx.WorkingDirectory,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    }
+                };
+                proc.Start();
+                proc.WaitForExit();
+                var output = proc.StandardOutput.ReadToEnd();
+                var error = proc.StandardError.ReadToEnd();
+                if (!string.IsNullOrEmpty(output)) ctx.Log(output);
+                if (!string.IsNullOrEmpty(error)) ctx.Log("[error] " + error);
+                ctx.Log($"process exec {file} exited with code {proc.ExitCode}");
+            });
         }
     }
 }

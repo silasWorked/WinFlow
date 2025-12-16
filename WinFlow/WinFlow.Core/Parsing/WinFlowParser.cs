@@ -59,6 +59,8 @@ namespace WinFlow.Core.Parsing
                     case "env.print":
                     case "file.write":
                     case "file.append":
+                    case "process.run":
+                    case "process.exec":
                         step.Commands.Add(new FlowCommand
                         {
                             Name = lname,

@@ -1,0 +1,10 @@
+#/// Test process commands
+echo message="Starting process test..."
+
+# Fire-and-forget process (should start cmd and continue immediately)
+process.run file="cmd.exe" args="/c echo fired from process.run"
+
+# Synchronous process with capture (should wait and log output)
+process.exec file="cmd.exe" args="/c echo output from process.exec"
+
+echo message="Process test completed."
