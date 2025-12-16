@@ -37,7 +37,7 @@ ni demo.wflow -ItemType File
 dotnet run --project WinFlow/WinFlow.Cli -- demo.wflow --verbose
 ```
 
-Ожидаемый вывод — задача с `echo` (заглушка парсера).
+Ожидаемый вывод — одна задача с шагами `echo`, `noop`, и др.
 
 ## Ассоциация .wflow (dev)
 
@@ -64,3 +64,17 @@ powershell -ExecutionPolicy Bypass -File WinFlow/WinFlow.Installer/register-wflo
 - Команды (справочник): [docs/commands.md](docs/commands.md)
 - CLI (аргументы и примеры): [docs/cli.md](docs/cli.md)
 - Ассоциация файлов: [docs/association.md](docs/association.md)
+
+## Инсталлятор (консоль)
+- Установка по умолчанию в `%LOCALAPPDATA%\WinFlow`, ассоциация `.wflow`, добавление в `PATH`:
+```powershell
+dotnet run --project WinFlow/WinFlow.Installer.Cli
+```
+- Дополнительно создать демо на рабочем столе:
+```powershell
+dotnet run --project WinFlow/WinFlow.Installer.Cli -- --create-desktop-demo
+```
+- Деинсталляция:
+```powershell
+dotnet run --project WinFlow/WinFlow.Installer.Cli -- --uninstall --dir "%LOCALAPPDATA%\WinFlow"
+```

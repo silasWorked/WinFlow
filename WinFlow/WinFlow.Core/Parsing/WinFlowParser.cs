@@ -26,7 +26,20 @@ namespace WinFlow.Core.Parsing
 
                 // command name is first token; remainder is arguments
                 var (name, rest) = SplitFirstToken(line);
-                switch (name.ToLowerInvariant())
+                var lname = name.ToLowerInvariant();
+
+                // handle two-part commands like "env set" => command name becomes "env.set"
+                if (lname is "env" or "file" or "process")
+                {
+                    var (sub, rest2) = SplitFirstToken(rest ?? string.Empty);
+                    if (!string.IsNullOrWhiteSpace(sub))
+                    {
+                        lname = lname + "." + sub.ToLowerInvariant();
+                        rest = rest2;
+                    }
+                }
+
+                switch (lname)
                 {
                     case "noop":
                         step.Commands.Add(new FlowCommand { Name = "noop" });
@@ -39,6 +52,17 @@ namespace WinFlow.Core.Parsing
                             {
                                 ["message"] = Unquote(rest?.Trim() ?? string.Empty)
                             }
+                        });
+                        break;
+                    case "env.set":
+                    case "env.unset":
+                    case "env.print":
+                    case "file.write":
+                    case "file.append":
+                        step.Commands.Add(new FlowCommand
+                        {
+                            Name = lname,
+                            Args = ParseKeyValueArgs(rest)
                         });
                         break;
                     default:
@@ -74,6 +98,66 @@ namespace WinFlow.Core.Parsing
                 }
             }
             return s;
+        }
+
+        private static Dictionary<string, string> ParseKeyValueArgs(string? rest)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(rest)) return result;
+            foreach (var tok in Tokenize(rest))
+            {
+                var idx = tok.IndexOf('=');
+                if (idx <= 0) continue;
+                var key = tok.Substring(0, idx).Trim();
+                var val = tok.Substring(idx + 1).Trim();
+                result[key] = Unquote(val);
+            }
+            return result;
+        }
+
+        private static List<string> Tokenize(string s)
+        {
+            var tokens = new List<string>();
+            var sb = new StringBuilder();
+            bool inQuotes = false;
+            char quoteChar = '\0';
+            for (int i = 0; i < s.Length; i++)
+            {
+                var c = s[i];
+                if (inQuotes)
+                {
+                    if (c == quoteChar)
+                    {
+                        inQuotes = false;
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                }
+                else
+                {
+                    if (c == '"' || c == '\'')
+                    {
+                        inQuotes = true;
+                        quoteChar = c;
+                    }
+                    else if (char.IsWhiteSpace(c))
+                    {
+                        if (sb.Length > 0)
+                        {
+                            tokens.Add(sb.ToString());
+                            sb.Clear();
+                        }
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                }
+            }
+            if (sb.Length > 0) tokens.Add(sb.ToString());
+            return tokens;
         }
     }
 }

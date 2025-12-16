@@ -55,6 +55,58 @@ namespace WinFlow.Core.Runtime
                     message = string.Empty;
                 ctx.Log(message);
             });
+
+            // Env module
+            Register("env.set", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("name", out var name) && !cmd.Args.TryGetValue("key", out name))
+                    throw new ArgumentException("env.set requires name=<VAR> or key=<VAR>");
+                if (!cmd.Args.TryGetValue("value", out var value))
+                    value = string.Empty;
+                ctx.Environment[name] = value;
+                ctx.Log($"env set {name}='{value}'");
+            });
+
+            Register("env.unset", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("name", out var name) && !cmd.Args.TryGetValue("key", out name))
+                    throw new ArgumentException("env.unset requires name=<VAR> or key=<VAR>");
+                ctx.Environment.Remove(name);
+                ctx.Log($"env unset {name}");
+            });
+
+            Register("env.print", (cmd, ctx) =>
+            {
+                foreach (var kv in ctx.Environment)
+                    ctx.Log($"{kv.Key}={kv.Value}");
+            });
+
+            // File module
+            Register("file.write", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("file.write requires path=<file>");
+                cmd.Args.TryGetValue("content", out var content);
+                var full = System.IO.Path.IsPathRooted(path)
+                    ? path
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, path);
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full)!);
+                System.IO.File.WriteAllText(full, content ?? string.Empty);
+                ctx.Log($"wrote {path}");
+            });
+
+            Register("file.append", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("file.append requires path=<file>");
+                cmd.Args.TryGetValue("content", out var content);
+                var full = System.IO.Path.IsPathRooted(path)
+                    ? path
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, path);
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full)!);
+                System.IO.File.AppendAllText(full, content ?? string.Empty);
+                ctx.Log($"appended {path}");
+            });
         }
     }
 }

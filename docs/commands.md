@@ -18,6 +18,33 @@
 - Сигнатура: `noop`
 - Пример: `noop`
 
+### env set
+- Назначение: установить переменную контекста
+- Сигнатура: `env set name=<VAR> value=<VALUE>`
+- Псевдоним: можно использовать `key=` вместо `name=`
+- Пример: `env set name=GREETING value="Hello"`
+
+### env unset
+- Назначение: удалить переменную из контекста
+- Сигнатура: `env unset name=<VAR>`
+- Пример: `env unset name=GREETING`
+
+### env print
+- Назначение: вывести переменные контекста
+- Сигнатура: `env print`
+- Пример: `env print`
+
+### file write
+- Назначение: создать/перезаписать файл
+- Сигнатура: `file write path=<FILE> content=<TEXT>`
+- Примечание: относительные пути — относительно рабочей папки скрипта
+- Пример: `file write path="out.txt" content="Hello"`
+
+### file append
+- Назначение: дописать в конец файла
+- Сигнатура: `file append path=<FILE> content=<TEXT>`
+- Пример: `file append path="out.txt" content=" World"`
+
 ---
 
 # Формат добавления новых команд (в ядре)
