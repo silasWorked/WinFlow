@@ -7,6 +7,10 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g., v0.1.1)"
+        required: true
 
 jobs:
   publish-win-x64:
@@ -22,13 +26,29 @@ jobs:
       - name: Publish Win-x64 (CLI)
         run: |
           dotnet publish WinFlow/WinFlow.Cli/WinFlow.Cli.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/win-x64
-      - name: Zip artifact
+      - name: Publish Win-x64 (Installer)
+        run: |
+          dotnet publish WinFlow/WinFlow.Installer.Cli/WinFlow.Installer.Cli.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/installer-win-x64
+      - name: Zip artifacts
         shell: pwsh
         run: |
           Compress-Archive -Path publish/win-x64/* -DestinationPath winflow-win-x64.zip -Force
-      - name: Upload release asset
+          Compress-Archive -Path publish/installer-win-x64/* -DestinationPath winflow-installer-win-x64.zip -Force
+      - name: Determine tag
+        id: vars
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          fi
+      - name: Upload release assets
         uses: softprops/action-gh-release@v1
         with:
-          files: winflow-win-x64.zip
+          tag_name: ${{ steps.vars.outputs.tag }}
+          files: |
+            winflow-win-x64.zip
+            winflow-installer-win-x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

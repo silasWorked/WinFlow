@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFlow.Cli", "WinFlow\WinF
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFlow.ShellHost", "WinFlow\WinFlow.ShellHost\WinFlow.ShellHost.csproj", "{9159A1A3-B745-4FDF-A210-A16B8343C862}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFlow.Installer.Cli", "WinFlow\WinFlow.Installer.Cli\WinFlow.Installer.Cli.csproj", "{B2796CD0-99DB-4F38-B935-013A85008BE0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,10 +29,15 @@ Global
 		{9159A1A3-B745-4FDF-A210-A16B8343C862}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9159A1A3-B745-4FDF-A210-A16B8343C862}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9159A1A3-B745-4FDF-A210-A16B8343C862}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2796CD0-99DB-4F38-B935-013A85008BE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2796CD0-99DB-4F38-B935-013A85008BE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2796CD0-99DB-4F38-B935-013A85008BE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2796CD0-99DB-4F38-B935-013A85008BE0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{822FCD2A-7F0E-41BD-B5AE-574D68E9F95A} = {DD3D97F9-4448-4A9B-8DEA-A70AF0EA0AB2}
 		{9BC9CB78-8521-4B66-83A4-5A80A9D00FE4} = {DD3D97F9-4448-4A9B-8DEA-A70AF0EA0AB2}
 		{9159A1A3-B745-4FDF-A210-A16B8343C862} = {DD3D97F9-4448-4A9B-8DEA-A70AF0EA0AB2}
+		{B2796CD0-99DB-4F38-B935-013A85008BE0} = {DD3D97F9-4448-4A9B-8DEA-A70AF0EA0AB2}
 	EndGlobalSection
 EndGlobal
