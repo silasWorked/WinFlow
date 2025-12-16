@@ -12,6 +12,9 @@ on:
         description: "Tag to release (e.g., v0.1.1)"
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   publish-win-x64:
     runs-on: windows-latest
@@ -47,6 +50,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             winflow-win-x64.zip
             winflow-installer-win-x64.zip
