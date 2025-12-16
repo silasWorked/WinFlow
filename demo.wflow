@@ -1,0 +1,6 @@
+// WinFlow demo script
+# Comments and blank lines are ignored
+
+echo "Hello from WinFlow!"
+noop
+echo "Done."

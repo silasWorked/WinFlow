@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# 
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WinFlow", "WinFlow", "{DD3D97F9-4448-4A9B-8DEA-A70AF0EA0AB2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFlow.Core", "WinFlow\WinFlow.Core\WinFlow.Core.csproj", "{822FCD2A-7F0E-41BD-B5AE-574D68E9F95A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFlow.Cli", "WinFlow\WinFlow.Cli\WinFlow.Cli.csproj", "{9BC9CB78-8521-4B66-83A4-5A80A9D00FE4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFlow.ShellHost", "WinFlow\WinFlow.ShellHost\WinFlow.ShellHost.csproj", "{9159A1A3-B745-4FDF-A210-A16B8343C862}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{822FCD2A-7F0E-41BD-B5AE-574D68E9F95A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{822FCD2A-7F0E-41BD-B5AE-574D68E9F95A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{822FCD2A-7F0E-41BD-B5AE-574D68E9F95A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{822FCD2A-7F0E-41BD-B5AE-574D68E9F95A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BC9CB78-8521-4B66-83A4-5A80A9D00FE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BC9CB78-8521-4B66-83A4-5A80A9D00FE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BC9CB78-8521-4B66-83A4-5A80A9D00FE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BC9CB78-8521-4B66-83A4-5A80A9D00FE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9159A1A3-B745-4FDF-A210-A16B8343C862}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9159A1A3-B745-4FDF-A210-A16B8343C862}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9159A1A3-B745-4FDF-A210-A16B8343C862}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9159A1A3-B745-4FDF-A210-A16B8343C862}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{822FCD2A-7F0E-41BD-B5AE-574D68E9F95A} = {DD3D97F9-4448-4A9B-8DEA-A70AF0EA0AB2}
+		{9BC9CB78-8521-4B66-83A4-5A80A9D00FE4} = {DD3D97F9-4448-4A9B-8DEA-A70AF0EA0AB2}
+		{9159A1A3-B745-4FDF-A210-A16B8343C862} = {DD3D97F9-4448-4A9B-8DEA-A70AF0EA0AB2}
+	EndGlobalSection
+EndGlobal

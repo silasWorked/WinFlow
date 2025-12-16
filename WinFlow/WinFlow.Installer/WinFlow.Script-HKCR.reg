@@ -1,0 +1,13 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\.wflow]
+@="WinFlow.Script"
+
+[HKEY_CLASSES_ROOT\WinFlow.Script]
+@="WinFlow Script"
+
+[HKEY_CLASSES_ROOT\WinFlow.Script\DefaultIcon]
+@="shell32.dll,70"
+
+[HKEY_CLASSES_ROOT\WinFlow.Script\shell\open\command]
+@="\"C:\\Program Files\\WinFlow\\winflow.exe\" \"%1\""
