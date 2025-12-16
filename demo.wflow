@@ -3,4 +3,8 @@
 
 echo "Hello from WinFlow!"
 noop
+env set name=GREETING value="Hi"
+env print
+file write path="out.txt" content="File line 1"
+file append path="out.txt" content=" + appended"
 echo "Done."
