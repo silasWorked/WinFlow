@@ -1,20 +1,52 @@
 ---
-layout: home
-title: WinFlow Documentation
+layout: default
+title: WinFlow
+nav_order: 0
 ---
 
-Welcome to WinFlow — a simple scripting/runtime DSL for Windows (.wflow).
+# WinFlow
 
-Start here:
+Простой DSL и рантайм для автоматизации Windows (.wflow).
 
-- [Overview & Quickstart](overview.md)
-- [Language (MVP & plan)](language.md)
-- [Commands Reference](commands.md)
-- [CLI Usage](cli.md)
-- [File Association](association.md)
+[![CI](https://github.com/silasWorked/WinFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/silasWorked/WinFlow/actions/workflows/ci.yml)
+[![Release](https://github.com/silasWorked/WinFlow/actions/workflows/release.yml/badge.svg)](https://github.com/silasWorked/WinFlow/actions/workflows/release.yml)
 
-Project links:
+## Быстрый старт
 
-- Repository: https://github.com/silasWorked/WinFlow
-- Releases: https://github.com/silasWorked/WinFlow/releases
-- Wiki: https://github.com/silasWorked/WinFlow/wiki
+```powershell
+# Клонировать и собрать
+cd C:\Users\silas\RiderProjects\WinFlow
+ dotnet build WinFlow.sln -c Debug
+
+# Запустить демо
+ dotnet run --project WinFlow/WinFlow.Cli -- demo.wflow --verbose
+```
+
+- Руководство: [Обзор и быстрый старт](overview.md)
+- Справочник: [Команды](commands.md)
+- CLI: [Параметры и примеры](cli.md)
+- Ассоциация файлов: [Ассоциация .wflow](association.md)
+
+## Возможности
+- Лаконичный синтаксис: команды и аргументы `key=value`, кавычки
+- Модули: `env`, `file`, `process` (планируется `registry`)
+- CLI и Инсталлятор: запуск из консоли и установщик без прав администратора
+- Интеграция с Windows: `.wflow` ассоциация, переменные окружения, процессы
+- CI/CD: сборка, релизы, синхронизация Wiki и документации
+
+## Пример скрипта
+```wflow
+#/// WinFlow Demo
+
+# Environment
+env set name=APP_NAME value="WinFlow"
+env print
+
+# Files
+file write path="config.txt" content="APP_NAME=WinFlow"
+
+# Process
+process.exec file="cmd.exe" args="/c echo Hello"
+```
+
+Скачать последнюю версию: https://github.com/silasWorked/WinFlow/releases/latest
