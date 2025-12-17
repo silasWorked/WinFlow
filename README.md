@@ -30,14 +30,17 @@ cd WinFlow
 ## Запуск CLI (демо)
 
 ```powershell
-# Создайте пустой файл demo.wflow где угодно
-ni demo.wflow -ItemType File
-
-# Запуск (verbose)
+# Запуск встроенного демо
 dotnet run --project WinFlow/WinFlow.Cli -- demo.wflow --verbose
+
+# Вывод:
+# [TASK 1] Environment setup (set/print)
+# [TASK 2] File operations (write/append)
+# [TASK 3] Process execution - async (process.run)
+# [TASK 4] Process execution - sync (process.exec)
 ```
 
-Ожидаемый вывод — одна задача с шагами `echo`, `noop`, и др.
+Смотрите [demo.wflow](demo.wflow) для полного примера со всеми командами.
 
 ## Ассоциация .wflow (dev)
 

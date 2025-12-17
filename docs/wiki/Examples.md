@@ -1,3 +1,8 @@
+# WinFlow Examples
+
+## Full Demo Script
+
+```wflow
 #/// WinFlow Demo - Multiple Tasks Showcase
 # This script demonstrates environment setup, file operations, and process execution
 
@@ -27,3 +32,40 @@ process.exec file="cmd.exe" args="/c echo WinFlow is running on %COMPUTERNAME%"
 echo message="[TASK 4] Process completed."
 
 echo message="All tasks finished successfully!"
+```
+
+## Running the Demo
+
+```powershell
+# Using the CLI
+WinFlow.exe demo.wflow --verbose
+
+# Expected output shows all 4 tasks executing
+```
+
+## Simple Environment Setup
+
+```wflow
+echo message="Setting up application..."
+env set name=DEBUG value="true"
+env set name=LOG_LEVEL value="INFO"
+env print
+```
+
+## File Creation and Editing
+
+```wflow
+file write path="config.ini" content="[Settings]"
+file append path="config.ini" content="version=1.0"
+file append path="config.ini" content="debug=false"
+```
+
+## Running External Programs
+
+```wflow
+# Async execution - doesn't wait for completion
+process.run file="notepad.exe" args="document.txt"
+
+# Sync execution - waits and captures output
+process.exec file="cmd.exe" args="/c dir"
+```

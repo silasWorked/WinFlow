@@ -15,12 +15,13 @@ cd C:\Users\silas\RiderProjects\WinFlow
 - Быстрый запуск CLI:
 
 ```powershell
-# создать пример (если его нет)
-ni demo.wflow -ItemType File -Force
-"// WinFlow demo`n`necho \"Hello from WinFlow!\"`nnoop`necho \"Done.\"" | Set-Content demo.wflow -Encoding UTF8
-
-# запустить
+# Запустить встроенный демо (все возможности)
  dotnet run --project WinFlow/WinFlow.Cli -- demo.wflow --verbose
+
+# Создать и запустить пользовательский скрипт
+ni my-script.wflow -ItemType File
+"echo message=`"My first WinFlow script`"" | Set-Content my-script.wflow -Encoding UTF8
+ dotnet run --project WinFlow/WinFlow.Cli -- my-script.wflow
 ```
 
 ## Концепции
@@ -32,24 +33,45 @@ ni demo.wflow -ItemType File -Force
 
 В MVP парсер группирует все команды файла в один Task с одним Step.
 
-## Пример .wflow (MVP)
+## Пример .wflow (MVP — текущее состояние)
 
 ```text
-// комментарии: // или #
-# пустые строки игнорируются
+#/// WinFlow Demo
+# Демонстрация всех возможностей языка
 
-echo "Hello from WinFlow!"
-noop
-echo "Done."
+echo message="Task 1: Environment setup"
+env set name=APP_NAME value="WinFlow"
+env set name=APP_VERSION value="0.1.0"
+env print
+
+echo message="Task 2: File operations"
+file write path="config.txt" content="APP_NAME=WinFlow"
+file append path="config.txt" content="VERSION=0.1.0"
+
+echo message="Task 3: Process execution"
+process.run file="cmd.exe" args="/c echo Async process"
+process.exec file="cmd.exe" args="/c echo Sync process"
+
+echo message="Complete!"
 ```
 
 Ожидаемый вывод:
 
 ```text
 [task] demo
-Hello from WinFlow!
-noop
-Done.
+message="Task 1: Environment setup"
+env set APP_NAME='WinFlow'
+env set APP_VERSION='0.1.0'
+APP_NAME=WinFlow
+APP_VERSION=0.1.0
+message="Task 2: File operations"
+wrote config.txt
+appended config.txt
+message="Task 3: Process execution"
+process run cmd.exe started (PID: 12345)
+Async process
+process exec cmd.exe exited with code 0
+message="Complete!"
 ```
 
 ## Что дальше

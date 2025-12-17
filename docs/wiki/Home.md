@@ -4,3 +4,4 @@ Welcome to WinFlow wiki!
 - Language: [[Language]]
 - Commands: [[Commands]]
 - Installer: [[Installer]]
+- Examples: [[Examples]]
