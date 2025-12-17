@@ -6,17 +6,22 @@ on:
       - 'docs/wiki/**'
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Clone Wiki
         run: |
-          git clone https://github.com/${{ github.repository }}.wiki.git _wiki
+          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git _wiki
           cd _wiki
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
+      
       - name: Sync pages
         run: |
           cp -r docs/wiki/* _wiki/
@@ -24,5 +29,5 @@ jobs:
           git add .
           if ! git diff --cached --quiet; then
             git commit -m "Sync from docs/wiki: ${{ github.event.head_commit.message }}"
-            git push origin master
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git master
           fi
