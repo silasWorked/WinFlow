@@ -1,3 +1,8 @@
+---
+title: Ассоциация .wflow
+nav_order: 5
+---
+
 # Ассоциация `.wflow` в Windows
 
 Цель: запуск по дабл‑клику и иконка "WinFlow Script".

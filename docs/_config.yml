@@ -1,9 +1,17 @@
 title: WinFlow
 description: A simple Windows automation DSL (.wflow)
-theme: minima
+remote_theme: just-the-docs/just-the-docs
 markdown: kramdown
 url: https://silasworked.github.io
 baseurl: /WinFlow
+
+search_enabled: true
+color_scheme: dark
+
+aux_links:
+  GitHub Repo: https://github.com/silasWorked/WinFlow
+  Releases: https://github.com/silasWorked/WinFlow/releases
+
 exclude:
   - README.md
   - "**/*.ps1"
