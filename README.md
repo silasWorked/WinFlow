@@ -67,7 +67,7 @@ powershell -ExecutionPolicy Bypass -File WinFlow/WinFlow.Installer/register-wflo
 - Команды (справочник): [docs/commands.md](docs/commands.md)
 - CLI (аргументы и примеры): [docs/cli.md](docs/cli.md)
 - Ассоциация файлов: [docs/association.md](docs/association.md)
-- Сайт документации: https://winflow.lonestill.uk/ (или резервный https://silasworked.github.io/WinFlow/)
+- Сайт документации (GitHub Pages): https://silasworked.github.io/WinFlow/
 
 ## Инсталлятор (консоль)
 - Установка по умолчанию в `%LOCALAPPDATA%\WinFlow`, ассоциация `.wflow`, добавление в `PATH`:
