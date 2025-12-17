@@ -10,14 +10,46 @@ namespace WinFlow.Cli
 {
     internal static class Program
     {
+        private const string Version = "0.1.0";
+
         private static int Main(string[] args)
         {
-            if (args.Length == 0 || HasArg(args, "-h") || HasArg(args, "--help"))
+            // Handle no arguments
+            if (args.Length == 0)
             {
                 PrintUsage();
-                return 1;
+                return 0;
             }
 
+            // Handle version command
+            if (HasArg(args, "--version") || HasArg(args, "-v") && args.Length == 1)
+            {
+                Console.WriteLine($"WinFlow {Version}");
+                return 0;
+            }
+
+            // Handle help command
+            if (HasArg(args, "--help") || HasArg(args, "-h"))
+            {
+                PrintUsage();
+                return 0;
+            }
+
+            // Handle info command
+            if (HasArg(args, "info") || HasArg(args, "--info"))
+            {
+                PrintInfo();
+                return 0;
+            }
+
+            // Handle list commands
+            if (HasArg(args, "list") || HasArg(args, "--list") || HasArg(args, "commands"))
+            {
+                PrintAvailableCommands();
+                return 0;
+            }
+
+            // Script execution mode
             var filePath = GetScriptPath(args);
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -42,7 +74,7 @@ namespace WinFlow.Cli
 
             if (context.Verbose)
             {
-                Console.WriteLine($"WinFlow CLI");
+                Console.WriteLine($"WinFlow CLI v{Version}");
                 Console.WriteLine($"Script: {Path.GetFullPath(filePath)}");
                 Console.WriteLine($"DryRun: {context.DryRun}");
                 Console.WriteLine();
@@ -79,6 +111,9 @@ namespace WinFlow.Cli
             foreach (var a in args)
             {
                 if (a.StartsWith("-")) continue;
+                if (a.Equals("info", StringComparison.OrdinalIgnoreCase)) continue;
+                if (a.Equals("list", StringComparison.OrdinalIgnoreCase)) continue;
+                if (a.Equals("commands", StringComparison.OrdinalIgnoreCase)) continue;
                 return a;
             }
             return null;
@@ -86,7 +121,66 @@ namespace WinFlow.Cli
 
         private static void PrintUsage()
         {
-            Console.WriteLine("Usage: winflow <script.wflow> [--dry-run] [--verbose]");
+            Console.WriteLine("WinFlow CLI v" + Version);
+            Console.WriteLine();
+            Console.WriteLine("Usage:");
+            Console.WriteLine("  winflow <script.wflow> [OPTIONS]  Run a WinFlow script");
+            Console.WriteLine("  winflow --version                 Show version");
+            Console.WriteLine("  winflow --help                    Show this help message");
+            Console.WriteLine("  winflow info                      Show system information");
+            Console.WriteLine("  winflow list                      List available commands");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            Console.WriteLine("  --dry-run     Simulate execution without making changes");
+            Console.WriteLine("  --verbose, -v Show detailed execution logs");
+            Console.WriteLine();
+            Console.WriteLine("Examples:");
+            Console.WriteLine("  winflow demo.wflow");
+            Console.WriteLine("  winflow script.wflow --verbose");
+            Console.WriteLine("  winflow setup.wflow --dry-run");
+        }
+
+        private static void PrintInfo()
+        {
+            Console.WriteLine("WinFlow System Information");
+            Console.WriteLine("=========================");
+            Console.WriteLine($"Version:       {Version}");
+            Console.WriteLine($".NET Runtime:  {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
+            Console.WriteLine($"OS:            {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
+            Console.WriteLine($"Architecture:  {System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture}");
+            Console.WriteLine($"Current Dir:   {Environment.CurrentDirectory}");
+            Console.WriteLine($"User:          {Environment.UserName}");
+            Console.WriteLine();
+        }
+
+        private static void PrintAvailableCommands()
+        {
+            Console.WriteLine("WinFlow Built-in Commands");
+            Console.WriteLine("=========================");
+            Console.WriteLine();
+            Console.WriteLine("Core Commands:");
+            Console.WriteLine("  echo         Output text messages");
+            Console.WriteLine("  noop         No operation (placeholder)");
+            Console.WriteLine();
+            Console.WriteLine("Environment Module:");
+            Console.WriteLine("  env set      Set environment variable");
+            Console.WriteLine("  env unset    Remove environment variable");
+            Console.WriteLine("  env print    Display environment variables");
+            Console.WriteLine();
+            Console.WriteLine("File Module:");
+            Console.WriteLine("  file write   Create or overwrite a file");
+            Console.WriteLine("  file append  Append content to a file");
+            Console.WriteLine();
+            Console.WriteLine("Process Module:");
+            Console.WriteLine("  process.run  Execute process (async, fire-and-forget)");
+            Console.WriteLine("  process.exec Execute process (sync, with output capture)");
+            Console.WriteLine();
+            Console.WriteLine("Example Usage:");
+            Console.WriteLine("  echo message=\"Hello World\"");
+            Console.WriteLine("  env set name=MY_VAR value=\"test\"");
+            Console.WriteLine("  file write path=\"config.txt\" content=\"data\"");
+            Console.WriteLine("  process.run file=\"cmd.exe\" args=\"/c dir\"");
+            Console.WriteLine();
         }
     }
 }
