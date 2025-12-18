@@ -14,7 +14,7 @@ namespace WinFlow.Cli
 {
     internal static class Program
     {
-        private const string Version = "0.1.9";
+        private const string Version = "0.2.0";
 
         private static int Main(string[] args)
         {

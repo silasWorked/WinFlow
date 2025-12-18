@@ -17,18 +17,58 @@ namespace WinFlow.Core.Parsing
             var step = new FlowStep();
 
             var lines = File.ReadAllLines(filePath);
-            for (int i = 0; i < lines.Length; i++)
+            
+            // First pass: collect function definitions
+            var functions = ParseFunctions(lines, out var nonFunctionLines);
+            
+            // Register functions globally
+            foreach (var func in functions)
             {
-                var raw = lines[i];
+                WinFlow.Core.Runtime.CommandDispatcher.RegisterFunction(func);
+            }
+            
+            // Add parsed functions to step as __define_func__ commands
+            foreach (var func in functions)
+            {
+                step.Commands.Add(CreateDefineCommand(func));
+            }
+            
+            // Second pass: parse regular commands
+            for (int i = 0; i < nonFunctionLines.Count; i++)
+            {
+                var raw = nonFunctionLines[i];
                 var line = raw.Trim();
-                if (line.Length == 0) continue; // skip blanks
-                if (line.StartsWith("#") || line.StartsWith("//")) continue; // comments
+                if (line.Length == 0) continue;
+                if (line.StartsWith("#") || line.StartsWith("//")) continue;
 
-                // command name is first token; remainder is arguments
+                // Check if this is a function call: funcname(args...)
+                if (line.Contains("(") && line.EndsWith(")"))
+                {
+                    var parenIdx = line.IndexOf('(');
+                    var funcName = line.Substring(0, parenIdx).Trim();
+                    var argStr = line.Substring(parenIdx + 1, line.Length - parenIdx - 2).Trim();
+                    
+                    // Parse function arguments: name(arg1, arg2, ...) or name("val1", "val2", ...)
+                    var callCmd = new FlowCommand { Name = "call" };
+                    callCmd.Args["name"] = funcName;
+                    
+                    if (!string.IsNullOrWhiteSpace(argStr))
+                    {
+                        var args = ParseFunctionCallArgs(argStr);
+                        for (int j = 0; j < args.Count; j++)
+                        {
+                            callCmd.Args[$"arg{j}"] = args[j];
+                        }
+                    }
+                    
+                    step.Commands.Add(callCmd);
+                    continue;
+                }
+
                 var (name, rest) = SplitFirstToken(line);
                 var lname = name.ToLowerInvariant();
 
-                // handle two-part commands like "env set" => command name becomes "env.set"
+                // Handle two-part commands
                 if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "try" or "string" or "json" or "http" or "array")
                 {
                     var (sub, rest2) = SplitFirstToken(rest ?? string.Empty);
@@ -91,9 +131,8 @@ namespace WinFlow.Core.Parsing
                     case "array.length":
                     case "if":
                     case "try":
-                    case "define":
-                    case "call":
                     case "include":
+                    case "call":
                         step.Commands.Add(new FlowCommand
                         {
                             Name = lname,
@@ -107,6 +146,157 @@ namespace WinFlow.Core.Parsing
 
             task.Steps.Add(step);
             return new List<FlowTask> { task };
+        }
+        
+        private List<FlowFunction> ParseFunctions(string[] allLines, out List<string> nonFunctionLines)
+        {
+            var functions = new List<FlowFunction>();
+            nonFunctionLines = new List<string>();
+            
+            int i = 0;
+            while (i < allLines.Length)
+            {
+                var line = allLines[i].Trim();
+                
+                if (line.Length == 0 || line.StartsWith("#") || line.StartsWith("//"))
+                {
+                    i++;
+                    continue;
+                }
+
+                if (line.StartsWith("define ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var func = ParseFunctionDef(allLines, i, out var nextLine);
+                    functions.Add(func);
+                    i = nextLine;
+                }
+                else
+                {
+                    nonFunctionLines.Add(allLines[i]);
+                    i++;
+                }
+            }
+
+            return functions;
+        }
+
+        private FlowFunction ParseFunctionDef(string[] allLines, int startLine, out int nextLineIndex)
+        {
+            var line = allLines[startLine].Trim();
+            
+            if (!line.StartsWith("define ", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException($"Expected 'define' at line {startLine + 1}");
+
+            var afterDefine = line.Substring(7).Trim();
+            var colonIdx = afterDefine.LastIndexOf(':');
+            if (colonIdx < 0)
+                throw new InvalidDataException($"Function definition must end with ':' at line {startLine + 1}");
+
+            var header = afterDefine.Substring(0, colonIdx).Trim();
+            var parenIdx = header.IndexOf('(');
+            
+            if (parenIdx < 0)
+                throw new InvalidDataException($"Function definition must have parameters at line {startLine + 1}");
+
+            var funcName = header.Substring(0, parenIdx).Trim();
+            var closeParenIdx = header.LastIndexOf(')');
+            
+            if (closeParenIdx < 0 || closeParenIdx <= parenIdx)
+                throw new InvalidDataException($"Invalid function parameters at line {startLine + 1}");
+
+            var paramStr = header.Substring(parenIdx + 1, closeParenIdx - parenIdx - 1).Trim();
+            var parameters = new List<string>();
+            if (!string.IsNullOrWhiteSpace(paramStr))
+            {
+                foreach (var param in paramStr.Split(','))
+                {
+                    parameters.Add(param.Trim());
+                }
+            }
+
+            var commands = new List<FlowCommand>();
+            int i = startLine + 1;
+            
+            while (i < allLines.Length)
+            {
+                var bodyLine = allLines[i];
+                
+                if (bodyLine.Length > 0 && char.IsWhiteSpace(bodyLine[0]))
+                {
+                    var trimmed = bodyLine.Trim();
+                    
+                    if (trimmed.Length == 0 || trimmed.StartsWith("#") || trimmed.StartsWith("//"))
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    var cmd = ParseCommandLine(trimmed);
+                    commands.Add(cmd);
+                    i++;
+                }
+                else if (bodyLine.Trim().Length == 0)
+                {
+                    i++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            nextLineIndex = i;
+            return new FlowFunction
+            {
+                Name = funcName,
+                Parameters = parameters,
+                Commands = commands
+            };
+        }
+
+        private FlowCommand ParseCommandLine(string line)
+        {
+            var (name, rest) = SplitFirstToken(line);
+            var lname = name.ToLowerInvariant();
+
+            if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "try" or "string" or "json" or "http" or "array")
+            {
+                var (sub, rest2) = SplitFirstToken(rest ?? string.Empty);
+                if (!string.IsNullOrWhiteSpace(sub) && lname != "if" && lname != "include" && lname != "try")
+                {
+                    lname = lname + "." + sub.ToLowerInvariant();
+                    rest = rest2;
+                }
+            }
+
+            if (lname == "echo")
+            {
+                return new FlowCommand
+                {
+                    Name = "echo",
+                    Args = new Dictionary<string, string>
+                    {
+                        ["message"] = Unquote(rest?.Trim() ?? string.Empty)
+                    }
+                };
+            }
+
+            return new FlowCommand
+            {
+                Name = lname,
+                Args = ParseKeyValueArgs(rest)
+            };
+        }
+
+        private FlowCommand CreateDefineCommand(FlowFunction func)
+        {
+            var cmd = new FlowCommand 
+            { 
+                Name = "__define_func__",
+                Metadata = func
+            };
+            cmd.Args["name"] = func.Name;
+            return cmd;
         }
 
         private static (string name, string? rest) SplitFirstToken(string line)
@@ -193,6 +383,58 @@ namespace WinFlow.Core.Parsing
             }
             if (sb.Length > 0) tokens.Add(sb.ToString());
             return tokens;
+        }
+
+        private static List<string> ParseFunctionCallArgs(string argStr)
+        {
+            var args = new List<string>();
+            var sb = new StringBuilder();
+            bool inQuotes = false;
+            char quoteChar = '\0';
+            
+            for (int i = 0; i < argStr.Length; i++)
+            {
+                var c = argStr[i];
+                
+                if (inQuotes)
+                {
+                    if (c == quoteChar)
+                    {
+                        inQuotes = false;
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                }
+                else
+                {
+                    if (c == '"' || c == '\'')
+                    {
+                        inQuotes = true;
+                        quoteChar = c;
+                    }
+                    else if (c == ',')
+                    {
+                        if (sb.Length > 0)
+                        {
+                            args.Add(sb.ToString().Trim());
+                            sb.Clear();
+                        }
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                }
+            }
+            
+            if (sb.Length > 0)
+            {
+                args.Add(sb.ToString().Trim());
+            }
+            
+            return args;
         }
     }
 }

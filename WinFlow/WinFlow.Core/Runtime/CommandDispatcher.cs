@@ -11,6 +11,14 @@ namespace WinFlow.Core.Runtime
 {
     public class CommandDispatcher
     {
+        private static readonly Dictionary<string, Model.FlowFunction> GlobalFunctions = 
+            new(StringComparer.OrdinalIgnoreCase);
+        
+        public static void RegisterFunction(Model.FlowFunction func)
+        {
+            GlobalFunctions[func.Name] = func;
+        }
+        
         private readonly Dictionary<string, Action<FlowCommand, ExecutionContext>> _handlers =
             new(StringComparer.OrdinalIgnoreCase);
 
@@ -698,39 +706,141 @@ namespace WinFlow.Core.Runtime
                 }
             });
 
-            Register("define", (cmd, ctx) =>
+            Register("__define_func__", (cmd, ctx) =>
             {
-                if (!cmd.Args.TryGetValue("name", out var name))
+                if (!cmd.Args.TryGetValue("name", out var funcName))
                     throw new ArgumentException("define requires name=<function_name>");
-                if (!cmd.Args.TryGetValue("body", out var body))
-                    throw new ArgumentException("define requires body=<commands>");
                 
-                ctx.Functions[name!] = body!;
-                ctx.Log($"Function '{name}' defined");
+                if (!GlobalFunctions.TryGetValue(funcName, out var func))
+                    throw new InvalidOperationException($"Function '{funcName}' not found in global registry");
+                
+                ctx.Functions[funcName] = func;
+                ctx.Log($"Function '{funcName}' defined with {func.Parameters.Count} parameter(s)");
             });
 
             Register("call", (cmd, ctx) =>
             {
-                if (!cmd.Args.TryGetValue("name", out var name))
+                if (!cmd.Args.TryGetValue("name", out var funcNameArg))
                     throw new ArgumentException("call requires name=<function_name>");
                 
-                if (!ctx.Functions.TryGetValue(name!, out var body))
-                    throw new InvalidOperationException($"Function '{name}' not defined");
+                if (!ctx.Functions.TryGetValue(funcNameArg!, out var func))
+                    throw new InvalidOperationException($"Function '{funcNameArg}' not defined");
                 
-                // Replace ${0}, ${1}, etc. with arg0=, arg1=, etc.
-                var funcBody = body;
-                for (int i = 0; i < 10; i++)
+                // Create a new context scope for the function
+                var funcContext = new ExecutionContext
                 {
-                    var argKey = $"arg{i}";
-                    if (cmd.Args.TryGetValue(argKey, out var argValue))
+                    DryRun = ctx.DryRun,
+                    Verbose = ctx.Verbose,
+                    WorkingDirectory = ctx.WorkingDirectory,
+                    Log = ctx.Log,
+                    LogError = ctx.LogError,
+                    LogWarning = ctx.LogWarning,
+                    LogFile = ctx.LogFile
+                };
+                
+                // Copy parent environment
+                foreach (var kvp in ctx.Environment)
+                    funcContext.Environment[kvp.Key] = kvp.Value;
+                
+                // Bind positional arguments to parameters
+                int argIdx = 0;
+                foreach (var param in func.Parameters)
+                {
+                    var argKey = $"arg{argIdx}";
+                    if (cmd.Args.TryGetValue(argKey, out var value))
                     {
-                        var expandedValue = Expand(argValue, ctx);
-                        funcBody = funcBody.Replace($"${{{i}}}", expandedValue, StringComparison.Ordinal);
+                        funcContext.Environment[param] = Expand(value, ctx);
                     }
+                    argIdx++;
                 }
                 
-                RunInline(funcBody, ctx);
+                // Execute function commands
+                var executor = new TaskExecutor();
+                var step = new FlowStep { Commands = func.Commands };
+                var task = new FlowTask { Name = funcNameArg, Steps = new List<FlowStep> { step } };
+                executor.Run(new List<FlowTask> { task }, funcContext);
+                
+                // Copy modified environment back (except parameters which are local)
+                foreach (var kvp in funcContext.Environment)
+                {
+                    if (!func.Parameters.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
+                    {
+                        ctx.Environment[kvp.Key] = kvp.Value;
+                    }
+                }
             });
+        }
+
+        private static (string, string?) SplitFirstToken(string line)
+        {
+            for (int i = 0; i < line.Length; i++)
+            {
+                if (char.IsWhiteSpace(line[i]))
+                {
+                    return (line.Substring(0, i), line.Substring(i + 1));
+                }
+            }
+            return (line, null);
+        }
+
+        private static Dictionary<string, string> ParseKeyValueArgs(string? rest)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(rest)) return result;
+            
+            var tokens = Tokenize(rest);
+            foreach (var tok in tokens)
+            {
+                var idx = tok.IndexOf('=');
+                if (idx <= 0) continue;
+                var key = tok.Substring(0, idx).Trim();
+                var val = tok.Substring(idx + 1).Trim();
+                if (val.Length >= 2 && ((val[0] == '"' && val[^1] == '"') || (val[0] == '\'' && val[^1] == '\'')))
+                    val = val.Substring(1, val.Length - 2);
+                result[key] = val;
+            }
+            return result;
+        }
+
+        private static List<string> Tokenize(string s)
+        {
+            var tokens = new List<string>();
+            var sb = new System.Text.StringBuilder();
+            bool inQuotes = false;
+            char quoteChar = '\0';
+            for (int i = 0; i < s.Length; i++)
+            {
+                var c = s[i];
+                if (inQuotes)
+                {
+                    if (c == quoteChar)
+                        inQuotes = false;
+                    else
+                        sb.Append(c);
+                }
+                else
+                {
+                    if (c == '"' || c == '\'')
+                    {
+                        inQuotes = true;
+                        quoteChar = c;
+                    }
+                    else if (char.IsWhiteSpace(c))
+                    {
+                        if (sb.Length > 0)
+                        {
+                            tokens.Add(sb.ToString());
+                            sb.Clear();
+                        }
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                }
+            }
+            if (sb.Length > 0) tokens.Add(sb.ToString());
+            return tokens;
         }
 
         private static bool IsTrue(string value)
@@ -740,6 +850,7 @@ namespace WinFlow.Core.Runtime
 
         private static bool EvaluateCondition(string condition, ExecutionContext ctx)
         {
+            // ...existing code...
             // Simple condition evaluator for: ==, !=, >, <, exists
             condition = condition.Trim();
             

@@ -17,5 +17,13 @@ namespace WinFlow.Core.Model
     {
         public string Name { get; set; } = "";
         public Dictionary<string, string> Args { get; set; } = new();
+        public object? Metadata { get; set; } // For storing FlowFunction or other metadata
+    }
+
+    public class FlowFunction
+    {
+        public string Name { get; set; } = "";
+        public List<string> Parameters { get; set; } = new();
+        public List<FlowCommand> Commands { get; set; } = new();
     }
 }

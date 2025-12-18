@@ -1,0 +1,4 @@
+﻿define greet(name):
+    echo Hello ${name}!
+
+greet(World)

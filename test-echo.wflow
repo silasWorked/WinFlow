@@ -1,0 +1,2 @@
+﻿env.set name=TEST value=HELLO
+echo ${TEST}

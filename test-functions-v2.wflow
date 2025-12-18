@@ -1,0 +1,9 @@
+﻿define add(x, y):
+    echo The sum is: ${x} + ${y}
+
+define multiply(a, b):
+    env.set name=RESULT value="${a} times ${b}"
+    echo Result stored: ${RESULT}
+
+add(3, 5)
+multiply("hello", "world")

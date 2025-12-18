@@ -1,0 +1,4 @@
+﻿define add(a, b):
+    env.print
+
+add(5, 10)

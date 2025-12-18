@@ -1,0 +1,10 @@
+// Test proper functions like in real languages
+define greet(name):
+    echo Hello ${name}!
+    echo Nice to meet you
+
+define add(a, b):
+    echo Adding ${a} and ${b}
+
+greet("World")
+add(5, 3)

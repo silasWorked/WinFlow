@@ -1,0 +1,4 @@
+﻿define test(x):
+    echo X is: ${x}
+
+test(MYVALUE)

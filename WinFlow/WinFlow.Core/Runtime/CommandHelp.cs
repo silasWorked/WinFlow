@@ -60,9 +60,9 @@ namespace WinFlow.Core.Runtime
             
             ["try"] = "try - Error handling with try-catch\nUsage: try body=\"<command>\" [catch=\"<command>\"]\nError message stored in ${_error}\nExample: try body=\"file.read path=nonexist.txt\" catch=\"echo Error: ${_error}\"",
             
-            ["define"] = "define - Define a reusable function\nUsage: define name=<FUNC_NAME> body=\"<commands>\"\nParameters: Use ${0}, ${1}, etc. for arguments\nExample: define name=greet body=\"echo Hello ${0}\"",
+            ["define"] = "define - Define a reusable function (like in normal languages)\nUsage: define funcname(param1, param2):\nExample:\n  define greet(name):\n      echo Hello ${name}!\n  greet(World)",
             
-            ["call"] = "call - Call a previously defined function\nUsage: call name=<FUNC_NAME> [args as additional params]\nExample: call name=greet World",
+            ["call"] = "call - Call a previously defined function (via funcname(args))\nUsage: funcname(arg1, arg2, ...)\nExample:\n  greet(World)\n  add(5, 3)",
             
             ["include"] = "include - Include commands from another script\nUsage: include path=\"<script.wflow>\"\nExample: include path=\"common.wflow\"",
         };
