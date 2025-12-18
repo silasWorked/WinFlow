@@ -425,6 +425,7 @@ namespace WinFlow.ShellHost
         {
             var buffer = new System.Text.StringBuilder();
             int cursorPos = 0;
+            const int promptLen = 10; // "winflow> " length
 
             while (true)
             {
@@ -440,11 +441,7 @@ namespace WinFlow.ShellHost
                     if (history.Count > 0 && historyIndex > 0)
                     {
                         historyIndex--;
-                        ClearCurrentLine(buffer.Length);
-                        buffer.Clear();
-                        buffer.Append(history[historyIndex]);
-                        cursorPos = buffer.Length;
-                        Console.Write(buffer.ToString());
+                        ClearLineAndRepaint(buffer, history[historyIndex], ref cursorPos, promptLen);
                     }
                 }
                 else if (key.Key == ConsoleKey.DownArrow)
@@ -452,56 +449,50 @@ namespace WinFlow.ShellHost
                     if (historyIndex < history.Count - 1)
                     {
                         historyIndex++;
-                        ClearCurrentLine(buffer.Length);
-                        buffer.Clear();
-                        buffer.Append(history[historyIndex]);
-                        cursorPos = buffer.Length;
-                        Console.Write(buffer.ToString());
+                        ClearLineAndRepaint(buffer, history[historyIndex], ref cursorPos, promptLen);
                     }
                     else if (historyIndex == history.Count - 1)
                     {
                         historyIndex = history.Count;
-                        ClearCurrentLine(buffer.Length);
-                        buffer.Clear();
-                        cursorPos = 0;
+                        ClearLineAndRepaint(buffer, "", ref cursorPos, promptLen);
                     }
                 }
                 else if (key.Key == ConsoleKey.Backspace && buffer.Length > 0 && cursorPos > 0)
                 {
                     buffer.Remove(cursorPos - 1, 1);
                     cursorPos--;
-                    RedrawLine(buffer, cursorPos);
+                    RepaintLine(buffer, cursorPos, promptLen);
                 }
                 else if (key.Key == ConsoleKey.Delete && cursorPos < buffer.Length)
                 {
                     buffer.Remove(cursorPos, 1);
-                    RedrawLine(buffer, cursorPos);
+                    RepaintLine(buffer, cursorPos, promptLen);
                 }
                 else if (key.Key == ConsoleKey.LeftArrow && cursorPos > 0)
                 {
                     cursorPos--;
-                    Console.SetCursorPosition(Console.CursorLeft - 1, Console.CursorTop);
+                    SetCursorSafe(promptLen + cursorPos, Console.CursorTop);
                 }
                 else if (key.Key == ConsoleKey.RightArrow && cursorPos < buffer.Length)
                 {
                     cursorPos++;
-                    Console.SetCursorPosition(Console.CursorLeft + 1, Console.CursorTop);
+                    SetCursorSafe(promptLen + cursorPos, Console.CursorTop);
                 }
                 else if (key.Key == ConsoleKey.Home)
                 {
-                    Console.SetCursorPosition(Console.CursorLeft - cursorPos, Console.CursorTop);
                     cursorPos = 0;
+                    SetCursorSafe(promptLen, Console.CursorTop);
                 }
                 else if (key.Key == ConsoleKey.End)
                 {
-                    Console.SetCursorPosition(Console.CursorLeft + (buffer.Length - cursorPos), Console.CursorTop);
                     cursorPos = buffer.Length;
+                    SetCursorSafe(promptLen + buffer.Length, Console.CursorTop);
                 }
                 else if (!char.IsControl(key.KeyChar))
                 {
                     buffer.Insert(cursorPos, key.KeyChar);
                     cursorPos++;
-                    RedrawLine(buffer, cursorPos);
+                    RepaintLine(buffer, cursorPos, promptLen);
                 }
                 else if (key.Key == ConsoleKey.C && key.Modifiers.HasFlag(ConsoleModifiers.Control))
                 {
@@ -511,19 +502,69 @@ namespace WinFlow.ShellHost
             }
         }
 
+        private static void ClearLineAndRepaint(System.Text.StringBuilder buffer, string newContent, ref int cursorPos, int promptLen)
+        {
+            // Clear from prompt to end of line
+            var currentY = Console.CursorTop;
+            SetCursorSafe(promptLen, currentY);
+            Console.Write(new string(' ', buffer.Length + 10)); // Extra space for safety
+            SetCursorSafe(promptLen, currentY);
+            
+            buffer.Clear();
+            buffer.Append(newContent);
+            Console.Write(newContent);
+            cursorPos = newContent.Length;
+        }
+
+        private static void RepaintLine(System.Text.StringBuilder buffer, int cursorPos, int promptLen)
+        {
+            var currentY = Console.CursorTop;
+            SetCursorSafe(promptLen, currentY);
+            Console.Write(buffer.ToString() + " ");
+            SetCursorSafe(promptLen + cursorPos, currentY);
+        }
+
+        private static void SetCursorSafe(int x, int y)
+        {
+            try
+            {
+                x = Math.Max(0, x);
+                y = Math.Max(0, y);
+                if (x < Console.BufferWidth && y < Console.BufferHeight)
+                    Console.SetCursorPosition(x, y);
+            }
+            catch { }
+        }
+
         private static void ClearCurrentLine(int length)
         {
-            Console.SetCursorPosition(0, Console.CursorTop);
-            Console.Write(new string(' ', length));
-            Console.SetCursorPosition(0, Console.CursorTop);
+            try
+            {
+                Console.SetCursorPosition(0, Console.CursorTop);
+                Console.Write(new string(' ', length));
+                Console.SetCursorPosition(0, Console.CursorTop);
+            }
+            catch { }
         }
 
         private static void RedrawLine(System.Text.StringBuilder buffer, int cursorPos)
         {
-            var startX = Console.CursorLeft - cursorPos;
-            Console.SetCursorPosition(startX, Console.CursorTop);
-            Console.Write(buffer.ToString() + " ");
-            Console.SetCursorPosition(startX + cursorPos, Console.CursorTop);
+            try
+            {
+                var currentX = Console.CursorLeft;
+                var currentY = Console.CursorTop;
+                var startX = Math.Max(0, currentX - cursorPos);
+                
+                if (startX >= 0 && startX < Console.BufferWidth)
+                {
+                    Console.SetCursorPosition(startX, currentY);
+                    Console.Write(buffer.ToString() + " ");
+                    var newX = startX + cursorPos;
+                    if (newX >= 0 && newX < Console.BufferWidth)
+                        Console.SetCursorPosition(newX, currentY);
+                }
+            }
+            catch { }
         }
     }
 }
