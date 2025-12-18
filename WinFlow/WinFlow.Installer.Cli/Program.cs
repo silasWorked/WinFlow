@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
@@ -75,6 +78,9 @@ namespace WinFlow.Installer.Cli
 				var devShellFull = Path.GetFullPath(devShell);
 				if (File.Exists(devShellFull)) shellSource = devShellFull;
 			}
+
+			// Check for running WinFlow processes and ask to close them
+			KillRunningProcessesIfNeeded();
 
 			var cliTarget = Path.Combine(installDir, "winflow.exe");
 			File.Copy(cliSource, cliTarget, overwrite: true);
@@ -227,6 +233,70 @@ namespace WinFlow.Installer.Cli
 			var content = "// WinFlow demo\n# Comments and blank lines are ignored\n\n" +
 						  "echo \"Hello from WinFlow!\"\nnoop\necho \"Done.\"\n";
 			File.WriteAllText(path, content);
+		}
+
+		private static void KillRunningProcessesIfNeeded()
+		{
+			// Find running WinFlow processes
+			var winFlowProcesses = new List<Process>();
+			try
+			{
+				var allProcesses = Process.GetProcesses();
+				var names = new[] { "winflow", "WinFlow.Cli", "WinFlow.ShellHost" };
+				
+				foreach (var proc in allProcesses)
+				{
+					try
+					{
+						var procName = proc.ProcessName;
+						if (names.Any(n => procName.Equals(n, StringComparison.OrdinalIgnoreCase)))
+						{
+							winFlowProcesses.Add(proc);
+						}
+					}
+					catch { /* Ignore processes we can't access */ }
+				}
+			}
+			catch { /* Ignore if we can't enumerate processes */ }
+
+			if (winFlowProcesses.Count == 0) return;
+
+			Console.WriteLine();
+			Console.WriteLine($"Found {winFlowProcesses.Count} running WinFlow process(es):");
+			foreach (var proc in winFlowProcesses)
+			{
+				try
+				{
+					Console.WriteLine($"  - {proc.ProcessName} (PID {proc.Id})");
+				}
+				catch { }
+			}
+
+			Console.Write("\nClose these processes to proceed with update? (y/n): ");
+			var response = Console.ReadLine();
+			if (response == null || !response.Equals("y", StringComparison.OrdinalIgnoreCase))
+			{
+				Console.WriteLine("Update cancelled.");
+				Environment.Exit(1);
+			}
+
+			// Kill all found processes
+			foreach (var proc in winFlowProcesses)
+			{
+				try
+				{
+					proc.Kill();
+					proc.WaitForExit(3000);
+					Console.WriteLine($"Closed {proc.ProcessName}");
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"Warning: Failed to close {proc.ProcessName}: {ex.Message}");
+				}
+			}
+
+			Console.WriteLine("Ready to install.");
+			Console.WriteLine();
 		}
 
 		private static bool HasArg(string[] args, string name)
