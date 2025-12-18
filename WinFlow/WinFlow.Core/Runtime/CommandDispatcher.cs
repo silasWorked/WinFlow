@@ -235,6 +235,22 @@ namespace WinFlow.Core.Runtime
                     ctx.Log(result);
             });
 
+            Register("file.read", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("file.read requires path=<file>");
+                var full = System.IO.Path.IsPathRooted(path)
+                    ? path
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, path);
+                if (!System.IO.File.Exists(full))
+                    throw new ArgumentException($"file.read: file not found: {path}");
+                var content = System.IO.File.ReadAllText(full);
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = content;
+                else
+                    ctx.Log(content);
+            });
+
             // Process module
             Register("process.run", (cmd, ctx) =>
             {
@@ -413,6 +429,79 @@ namespace WinFlow.Core.Runtime
                     RunInline(body!, ctx);
                 else if (!result && !string.IsNullOrWhiteSpace(elseBody))
                     RunInline(elseBody!, ctx);
+            });
+
+            // String module
+            Register("string.replace", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("string.replace requires text=<string>");
+                if (!cmd.Args.TryGetValue("from", out var from))
+                    throw new ArgumentException("string.replace requires from=<pattern>");
+                if (!cmd.Args.TryGetValue("to", out var to))
+                    throw new ArgumentException("string.replace requires to=<replacement>");
+                var result = text.Replace(from, to);
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = result;
+                else
+                    ctx.Log(result);
+            });
+
+            Register("string.contains", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("string.contains requires text=<string>");
+                if (!cmd.Args.TryGetValue("pattern", out var pattern))
+                    throw new ArgumentException("string.contains requires pattern=<string>");
+                var result = text.Contains(pattern) ? "true" : "false";
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = result;
+                else
+                    ctx.Log(result);
+            });
+
+            Register("string.length", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("string.length requires text=<string>");
+                var result = text.Length.ToString();
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = result;
+                else
+                    ctx.Log(result);
+            });
+
+            Register("string.upper", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("string.upper requires text=<string>");
+                var result = text.ToUpperInvariant();
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = result;
+                else
+                    ctx.Log(result);
+            });
+
+            Register("string.lower", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("string.lower requires text=<string>");
+                var result = text.ToLowerInvariant();
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = result;
+                else
+                    ctx.Log(result);
+            });
+
+            Register("string.trim", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("string.trim requires text=<string>");
+                var result = text.Trim();
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = result;
+                else
+                    ctx.Log(result);
             });
 
             // Include module

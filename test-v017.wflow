@@ -1,0 +1,11 @@
+// Test v0.1.7 new features
+file write path=test.txt content="Hello WinFlow World"
+file read path=test.txt var=CONTENT
+string.contains text="${CONTENT}" pattern="WinFlow" var=HAS_FLOW
+echo message="Contains WinFlow: ${HAS_FLOW}"
+string.length text="${CONTENT}" var=LEN
+echo message="Length: ${LEN}"
+string.upper text="hello" var=UPPER
+echo message="Uppercase: ${UPPER}"
+string.replace text="${CONTENT}" from="WinFlow" to="v0.1.7" var=REPLACED
+echo message="Replaced: ${REPLACED}"

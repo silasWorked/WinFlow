@@ -21,6 +21,7 @@ namespace WinFlow.Core.Runtime
             ["file.copy"] = "file.copy - Copy file\nUsage: file.copy src=<FILE> dst=<FILE> [overwrite=true|false]\nExample: file.copy src=\"a.txt\" dst=\"b.txt\"",
             ["file.move"] = "file.move - Move or rename file\nUsage: file.move src=<FILE> dst=<FILE> [overwrite=true|false]\nExample: file.move src=\"old.txt\" dst=\"new.txt\"",
             ["file.exists"] = "file.exists - Check if file or directory exists\nUsage: file.exists path=<PATH> [var=<VARNAME>]\nReturns: Sets variable or prints true/false\nExample: file.exists path=\"config.txt\" var=EXISTS",
+            ["file.read"] = "file.read - Read file content\nUsage: file.read path=<FILE> [var=<VARNAME>]\nReturns: Sets variable or prints to console\nExample: file.read path=\"config.txt\" var=CONFIG",
             
             ["process.run"] = "process.run - Start process (async, fire-and-forget)\nUsage: process.run file=<EXE> [args=<ARGS>]\nExample: process.run file=\"notepad.exe\" args=\"readme.txt\"",
             ["process.exec"] = "process.exec - Execute process and wait (captures output)\nUsage: process.exec file=<EXE> [args=<ARGS>]\nExample: process.exec file=\"cmd.exe\" args=\"/c dir\"",
@@ -36,6 +37,13 @@ namespace WinFlow.Core.Runtime
             
             ["loop.repeat"] = "loop.repeat - Execute body N times\nUsage: loop.repeat count=<N> body=\"<command>\"\nVariables: ${index} (0-based)\nExample: loop.repeat count=3 body=\"echo pass ${index}\"",
             ["loop.foreach"] = "loop.foreach - Iterate over list items\nUsage: loop.foreach items=\"<list>\" [sep=\",\"] [var=item] body=\"<command>\"\nVariables: ${index}, ${<var>}\nExample: loop.foreach items=\"a;b;c\" sep=\";\" var=x body=\"echo ${x}\"",
+            
+            ["string.replace"] = "string.replace - Replace text in string\nUsage: string.replace text=<STR> from=<PATTERN> to=<REPLACEMENT> [var=<VARNAME>]\nExample: string.replace text=\"hello world\" from=\"world\" to=\"WinFlow\"",
+            ["string.contains"] = "string.contains - Check if string contains pattern\nUsage: string.contains text=<STR> pattern=<PATTERN> [var=<VARNAME>]\nReturns: true/false\nExample: string.contains text=\"hello\" pattern=\"ell\" var=FOUND",
+            ["string.length"] = "string.length - Get string length\nUsage: string.length text=<STR> [var=<VARNAME>]\nExample: string.length text=\"hello\" var=LEN",
+            ["string.upper"] = "string.upper - Convert string to uppercase\nUsage: string.upper text=<STR> [var=<VARNAME>]\nExample: string.upper text=\"hello\" var=UPPER",
+            ["string.lower"] = "string.lower - Convert string to lowercase\nUsage: string.lower text=<STR> [var=<VARNAME>]\nExample: string.lower text=\"HELLO\" var=LOWER",
+            ["string.trim"] = "string.trim - Remove leading/trailing whitespace\nUsage: string.trim text=<STR> [var=<VARNAME>]\nExample: string.trim text=\"  hello  \" var=TRIMMED",
             
             ["if"] = "if - Conditional execution\nUsage: if condition=\"<expr>\" body=\"<command>\" [else=\"<command>\"]\nOperators: ==, !=, >, <, exists\nExample: if condition=\"${VAR} == value\" body=\"echo matched\"",
             

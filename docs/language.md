@@ -47,12 +47,15 @@ nav_order: 2
 ## Команды (обзор)
 - Базовые: `echo`, `noop`
 - Env: `env set`, `env unset`, `env print`
-- File: `file write`, `file append`, `file mkdir`, `file delete`, `file copy`
+- File: `file write`, `file append`, `file mkdir`, `file delete`, `file copy`, `file move`, `file exists`, `file read`
+- String: `string.replace`, `string.contains`, `string.length`, `string.upper`, `string.lower`, `string.trim`
 - Process: `process run`, `process exec`
 - Registry (Windows): `reg set`, `reg get`, `reg delete`
 - Sleep: `sleep ms`, `sleep sec`
 - Net: `net download`
 - Loop: `loop repeat`, `loop foreach`
+- Conditional: `if` (с операторами ==, !=, >, <, exists)
+- Script composition: `include`
 
 Подробные сигнатуры см. в справочнике команд.
 

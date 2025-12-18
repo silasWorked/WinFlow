@@ -29,7 +29,7 @@ namespace WinFlow.Core.Parsing
                 var lname = name.ToLowerInvariant();
 
                 // handle two-part commands like "env set" => command name becomes "env.set"
-                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include")
+                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "string")
                 {
                     var (sub, rest2) = SplitFirstToken(rest ?? string.Empty);
                     if (!string.IsNullOrWhiteSpace(sub) && lname != "if" && lname != "include")
@@ -64,6 +64,7 @@ namespace WinFlow.Core.Parsing
                     case "file.copy":
                     case "file.move":
                     case "file.exists":
+                    case "file.read":
                     case "process.run":
                     case "process.exec":
                     case "reg.set":
@@ -74,6 +75,12 @@ namespace WinFlow.Core.Parsing
                     case "net.download":
                     case "loop.repeat":
                     case "loop.foreach":
+                    case "string.replace":
+                    case "string.contains":
+                    case "string.length":
+                    case "string.upper":
+                    case "string.lower":
+                    case "string.trim":
                     case "if":
                     case "include":
                         step.Commands.Add(new FlowCommand
