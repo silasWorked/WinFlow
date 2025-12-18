@@ -136,12 +136,7 @@ greet("Bob", "Have a great day")
 define build(config):
     echo Building in ${config} mode...
     process.exec file="dotnet" args="build -c ${config}"
-    
-    if condition="${LASTEXITCODE}" equals="0":
-        echo Build successful!
-    else:
-        echo Build failed
-        exit code=1
+    if condition="${LASTEXITCODE} == 0" body="echo Build successful!" else="echo Build failed && exit code=1"
 
 build("Release")
 ```
@@ -170,14 +165,15 @@ echo Backup created and config updated
 // Загрузка данных с API
 net download url="https://api.github.com/repos/silasWorked/WinFlow" path="repo.json"
 
-// Парсинг JSON
-json.parse file="repo.json" var="repo"
+// Чтение файла и парсинг JSON
+file read path="repo.json" var=json_content
+json.parse text="${json_content}" var=repo
 
-// Использование данных
-echo Repository: ${repo.name}
-echo Description: ${repo.description}
-echo Stars: ${repo.stargazers_count}
-echo Language: ${repo.language}
+// Получение данных из JSON
+json.get text="${repo}" path="name" var=repo_name
+json.get text="${repo}" path="stargazers_count" var=stars
+echo Repository: ${repo_name}
+echo Stars: ${stars}
 ```
 
 ### Цикл обработки файлов
@@ -185,14 +181,11 @@ echo Language: ${repo.language}
 ```wflow
 #/// Batch File Processing
 
-// Создание списка файлов
-array.create name=files values="file1.txt,file2.txt,file3.txt"
+// Создание функции для обработки файлов
+define process_files():
+    loop.foreach items="file1.txt,file2.txt,file3.txt" var=file body="echo Processing ${file} && file.copy src=${file} dst=backup/${file} && echo ${file} backed up"
 
-// Обработка каждого файла
-loop.foreach array=files element=file:
-    echo Processing ${file}...
-    file copy source="${file}" destination="backup/${file}"
-    echo ${file} backed up successfully
+process_files()
 ```
 
 ## Запуск с параметрами

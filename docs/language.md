@@ -68,36 +68,31 @@ loop.repeat count=3:
 - Доступна переменная `${index}` (0..N-1)
 - Многострочное тело с отступом
 
-### loop.foreach — итерация по массиву
+### loop.foreach — итерация по элементам
 
 ```wflow
-array.create name=items values="apple,banana,orange"
-
-loop.foreach array=items element=item:
-    echo Processing: ${item}
-    echo Index: ${index}
+loop.foreach items="apple,banana,orange" var=item body="echo Processing: ${item} (Index: ${index})"
 ```
 
-- Параметры: `array` (имя массива), `element` (имя переменной)
-- Доступны: `${element}`, `${index}`
+- Параметры: `items` (строка через запятую), `var` (имя переменной элемента), `body` (тело цикла)
+- Доступны: `${var}`, `${index}`
 
 Подробнее: [Продвинутые возможности](advanced.md)
 
 ## Условия
 
 ```wflow
-if condition="${status}" equals="ok":
-    echo Success!
-    env set result=passed
-else:
-    echo Failed
-    exit code=1
+if condition="${status} == ok" body="echo Success! && env.set name=result value=passed" else="echo Failed && exit code=1"
 ```
 
 **Операторы сравнения:**
-- `equals` / `not_equals`
-- `greater` / `less`
-- `contains`
+- ` == ` — равенство
+- ` != ` — неравенство
+- ` > ` — больше
+- ` < ` — меньше
+- `exists <path>` — проверка существования файла/директории
+
+**Примечание:** Условие передается в параметре `condition`, тело в `body`, альтернатива в `else`.
 
 Подробнее: [Продвинутые возможности](advanced.md)
 
@@ -149,10 +144,9 @@ catch:
 - `net request url="..." method="..." var="..."` — HTTP запрос
 
 ### Array — массивы (v0.1.9+)
-- `array.create name="..." values="..."` — создать массив
-- `array.add name="..." value="..."` — добавить элемент
-- `array.get name="..." index=N` — получить элемент
-- `array.length name="..."` — получить размер
+- `array.split text="..." [sep=","] [var="..."]` — разделить строку на массив (JSON)
+- `array.join array="[...]" [sep=","] [var="..."]` — объединить массив в строку
+- `array.length array="[...]" [var="..."]` — получить размер массива
 
 ### String — строки
 - `string.replace text="..." from="..." to="..."` — замена

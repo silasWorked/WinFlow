@@ -31,16 +31,15 @@ greet("World")
 ```wflow
 // HTTP запросы и JSON
 net download url="https://api.github.com/repos/silasWorked/WinFlow" path="repo.json"
-json.parse file="repo.json" var="repo"
-echo Repository: ${repo.name}
-echo Stars: ${repo.stargazers_count}
+file read path="repo.json" var=json_data
+json.parse text="${json_data}" var=repo
+json.get text="${repo}" path="name" var=repo_name
+json.get text="${repo}" path="stargazers_count" var=stars
+echo Repository: ${repo_name}
+echo Stars: ${stars}
 
 // Try-catch для обработки ошибок
-try:
-    file read path="config.json"
-    json.parse file="config.json" var="config"
-catch:
-    echo Error: Config not found, using defaults
+try body="file.read path=config.json var=cfg && json.parse text=${cfg} var=config" catch="echo Error: Config not found, using defaults"
 ```
 
 ### **Мощные конструкции языка**
@@ -169,10 +168,14 @@ build_project("Release")
 define fetch_user_data(username):
     env set api_url="https://api.github.com/users/${username}"
     net download url="${api_url}" path="user.json"
-    json.parse file="user.json" var="user"
-    echo User: ${user.login}
-    echo Repos: ${user.public_repos}
-    echo Followers: ${user.followers}
+    file read path="user.json" var=json_data
+    json.parse text="${json_data}" var=user
+    json.get text="${user}" path="login" var=user_login
+    json.get text="${user}" path="public_repos" var=repos
+    json.get text="${user}" path="followers" var=followers
+    echo User: ${user_login}
+    echo Repos: ${repos}
+    echo Followers: ${followers}
 
 fetch_user_data("octocat")
 ```
@@ -231,9 +234,9 @@ Get-ChildItem test-*.wflow | ForEach-Object {
 - ✅ **Поддержка переменных в функциях**: полная подстановка `${variable}`
 
 ### v0.1.9
-- ✅ JSON парсинг и манипуляция (`json.parse`, `json.get`, `json.set`)
-- ✅ HTTP запросы (`net download`, `net request`)
-- ✅ Массивы (`array.create`, `array.add`, `array.get`, `array.length`)
+- ✅ JSON парсинг и манипуляция (`json.parse`, `json.get`)
+- ✅ HTTP запросы (`http.get`, `http.post`, `http.put`, `net.download`)
+- ✅ Массивы (`array.split`, `array.join`, `array.length`)
 - ✅ Try-catch блоки для обработки ошибок
 - ✅ Базовые функции (`define`, `call`)
 
