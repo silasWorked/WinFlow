@@ -58,9 +58,38 @@ namespace WinFlow.Installer.Cli
 				return 2;
 			}
 
+
+			// Try detect ShellHost executable near installer
+			string? shellSource = null;
+			var shellCandidates = new[]
+			{
+				Path.Combine(selfDir, "WinFlow.ShellHost.exe"),
+			};
+			foreach (var s in shellCandidates)
+				if (File.Exists(s)) { shellSource = s; break; }
+
+			if (shellSource == null)
+			{
+				// Dev fallback for ShellHost
+				var devShell = Path.Combine(selfDir, "..", "..", "WinFlow.ShellHost", "bin", "Debug", "net8.0", "WinFlow.ShellHost.exe");
+				var devShellFull = Path.GetFullPath(devShell);
+				if (File.Exists(devShellFull)) shellSource = devShellFull;
+			}
+
 			var cliTarget = Path.Combine(installDir, "winflow.exe");
 			File.Copy(cliSource, cliTarget, overwrite: true);
 			Console.WriteLine($"Copied CLI -> {cliTarget}");
+
+			if (shellSource != null)
+			{
+				var shellTarget = Path.Combine(installDir, "WinFlow.ShellHost.exe");
+				File.Copy(shellSource, shellTarget, overwrite: true);
+				Console.WriteLine($"Copied ShellHost -> {shellTarget}");
+			}
+			else
+			{
+				Console.WriteLine("Warning: WinFlow.ShellHost.exe not found; interactive shell won't be available.");
+			}
 
 			if (!noAssoc)
 			{
