@@ -1,4 +1,4 @@
-# WinFlow v0.2.2 Release Notes
+# WinFlow v0.2.3 Release Notes
 
 ## Новые возможности
 
@@ -202,7 +202,7 @@ log.info message="Cleaning files older than ${cutoff_date}"
 
 ## Технические детали
 
-- **Версия:** 0.2.2
+- **Версия:** 0.2.3
 - **Добавлено команд:** 29
 - **Модули:** datetime (5), path (7), log (5), regex (3), archive (4), + isset
 - **Совместимость:** Обратная совместимость с 0.2.1
@@ -236,4 +236,4 @@ log.info message="Cleaning files older than ${cutoff_date}"
 
 ## Обновление
 
-Скачайте последнюю версию: https://github.com/silasWorked/WinFlow/releases/tag/v0.2.2
+Скачайте последнюю версию: https://github.com/silasWorked/WinFlow/releases/tag/v0.2.3
