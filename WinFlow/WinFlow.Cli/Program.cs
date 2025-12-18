@@ -18,6 +18,12 @@ namespace WinFlow.Cli
 
         private static int Main(string[] args)
         {
+            // Auto-check for updates at startup (unless disabled)
+            if (!HasArg(args, "--no-update-check"))
+            {
+                CheckForUpdatesAtStartup().GetAwaiter().GetResult();
+            }
+
             // Handle no arguments -> open a separate shell window
             if (args.Length == 0)
             {
@@ -564,6 +570,84 @@ namespace WinFlow.Cli
             Console.WriteLine("  file write path=\"config.txt\" content=\"data\"");
             Console.WriteLine("  process.run file=\"cmd.exe\" args=\"/c dir\"");
             Console.WriteLine();
+        }
+
+        // --- Auto-check for updates at startup ---
+        private static async Task CheckForUpdatesAtStartup()
+        {
+            try
+            {
+                var latest = await GetLatestReleaseAsync();
+                if (latest == null) return;
+
+                var currentV = ParseVersion(Version);
+                var latestV = ParseVersion(latest.Tag);
+                if (currentV == null || latestV == null) return;
+
+                if (CompareVersions(latestV, currentV) <= 0) return;
+
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"┌─ WinFlow Update Available ─┐");
+                Console.WriteLine($"│ Current: {Version,-20} │");
+                Console.WriteLine($"│ Latest:  {latest.Tag,-20} │");
+                Console.WriteLine($"└────────────────────────────┘");
+                Console.ResetColor();
+                Console.WriteLine($"Run 'winflow update' to install.");
+                Console.WriteLine();
+
+                // Optionally auto-update (uncomment to enable)
+                // await PerformAutoUpdateAsync(latest);
+            }
+            catch { /* Silently ignore errors in startup check */ }
+        }
+
+        private static async Task PerformAutoUpdateAsync(ReleaseInfo latest)
+        {
+            try
+            {
+                Console.Write("Auto-updating... ");
+                if (string.IsNullOrWhiteSpace(latest.DownloadUrl))
+                {
+                    Console.WriteLine("No asset found.");
+                    return;
+                }
+
+                var tempZip = Path.Combine(Path.GetTempPath(), $"winflow-update-{Guid.NewGuid():N}.zip");
+                var tempDir = Path.Combine(Path.GetTempPath(), $"winflow-update-{Guid.NewGuid():N}");
+
+                using (var http = CreateHttpClient())
+                {
+                    var data = await http.GetByteArrayAsync(latest.DownloadUrl);
+                    await File.WriteAllBytesAsync(tempZip, data);
+                }
+
+                Directory.CreateDirectory(tempDir);
+                ZipFile.ExtractToDirectory(tempZip, tempDir, overwriteFiles: true);
+
+                var installerPath = Path.Combine(tempDir, "WinFlow.Installer.Cli.exe");
+                if (!File.Exists(installerPath))
+                {
+                    var found = Directory.GetFiles(tempDir, "WinFlow.Installer.Cli.exe", SearchOption.AllDirectories);
+                    if (found.Length > 0) installerPath = found[0];
+                }
+                if (!File.Exists(installerPath))
+                {
+                    Console.WriteLine("Installer not found.");
+                    return;
+                }
+
+                var installDir = GetDefaultInstallDir();
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = installerPath,
+                    Arguments = $"--dir \"{installDir}\"",
+                    UseShellExecute = true,
+                    WorkingDirectory = Path.GetDirectoryName(installerPath) ?? tempDir
+                };
+                System.Diagnostics.Process.Start(psi);
+                Console.WriteLine("Update started.");
+            }
+            catch { /* Silently ignore */ }
         }
     }
 }
