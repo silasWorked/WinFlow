@@ -87,6 +87,59 @@ namespace WinFlow.Cli
                 return 0;
             }
 
+            // Handle --url flag (download and run script)
+            var urlArg = GetArgValue(args, "--url");
+            if (!string.IsNullOrWhiteSpace(urlArg))
+            {
+                try
+                {
+                    var tempFile = Path.Combine(Path.GetTempPath(), "winflow_" + Guid.NewGuid() + ".wflow");
+                    using var http = new HttpClient();
+                    var data = http.GetByteArrayAsync(urlArg).GetAwaiter().GetResult();
+                    File.WriteAllBytes(tempFile, data);
+                    
+                    var urlContext = new ExecutionContext
+                    {
+                        DryRun = HasArg(args, "--dry-run"),
+                        Verbose = HasArg(args, "--verbose") || HasArg(args, "-v"),
+                        WorkingDirectory = Environment.CurrentDirectory,
+                        Log = s => Console.WriteLine(s),
+                        LogError = s => 
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.Error.WriteLine(s);
+                            Console.ResetColor();
+                        },
+                        LogWarning = s =>
+                        {
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine(s);
+                            Console.ResetColor();
+                        }
+                    };
+
+                    if (urlContext.Verbose)
+                    {
+                        Console.WriteLine($"WinFlow CLI v{Version}");
+                        Console.WriteLine($"Downloaded from: {urlArg}");
+                        Console.WriteLine($"DryRun: {urlContext.DryRun}");
+                        Console.WriteLine();
+                    }
+
+                    IParser parser = new WinFlowParser();
+                    var tasks = parser.Parse(tempFile);
+                    var executor = new TaskExecutor();
+                    var result = executor.Run(tasks, urlContext);
+                    File.Delete(tempFile);
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Error: Failed to download/execute from URL: {ex.Message}");
+                    return 1;
+                }
+            }
+
             // Script execution mode
             var filePath = GetScriptPath(args);
             if (string.IsNullOrWhiteSpace(filePath))
@@ -200,6 +253,7 @@ namespace WinFlow.Cli
             Console.WriteLine("  winflow                         Open WinFlow shell (new window)");
             Console.WriteLine("  winflow shell                   Open WinFlow shell (new window)");
             Console.WriteLine("  winflow <script.wflow> [OPTIONS]  Run a WinFlow script");
+            Console.WriteLine("  winflow --url <URL> [OPTIONS]   Download and run script from URL");
             Console.WriteLine("  winflow --version                 Show version");
             Console.WriteLine("  winflow --help                    Show this help message");
             Console.WriteLine("  winflow info                      Show system information");
@@ -211,9 +265,7 @@ namespace WinFlow.Cli
             Console.WriteLine("  --dry-run          Simulate without executing");
             Console.WriteLine("  --verbose, -v      Enable verbose output");
             Console.WriteLine("  --log-file <path>  Write output to log file");
-            Console.WriteLine();
-            Console.WriteLine("  --dry-run     Simulate execution without making changes");
-            Console.WriteLine("  --verbose, -v Show detailed execution logs");
+            Console.WriteLine("  --url <URL>        Download and execute script from URL");
             Console.WriteLine();
             Console.WriteLine("Examples:");
             Console.WriteLine("  winflow            # opens new console window");
@@ -221,6 +273,7 @@ namespace WinFlow.Cli
             Console.WriteLine("  winflow demo.wflow");
             Console.WriteLine("  winflow script.wflow --verbose");
             Console.WriteLine("  winflow setup.wflow --dry-run");
+            Console.WriteLine("  winflow --url https://example.com/script.wflow");
             Console.WriteLine("  winflow check-update");
             Console.WriteLine("  winflow update");
         }

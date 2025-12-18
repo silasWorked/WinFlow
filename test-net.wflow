@@ -1,0 +1,3 @@
+net download url="https://raw.githubusercontent.com/silasWorked/WinFlow/refs/heads/main/demo.wflow" path="downloaded.wflow"
+file read path="downloaded.wflow" var=CONTENT
+echo message="Downloaded ${CONTENT}"
