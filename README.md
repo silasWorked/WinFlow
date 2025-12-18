@@ -31,48 +31,52 @@ greet("World")
 ```wflow
 // HTTP запросы и JSON
 net download url="https://api.github.com/repos/silasWorked/WinFlow" path="repo.json"
-json.parse file="repo.json" var="repo"
-echo Repository: ${repo.name}
-echo Stars: ${repo.stargazers_count}
+file read path="repo.json" var=json_data
+json.parse text="${json_data}" var=repo
+json.get text="${repo}" path="name" var=repo_name
+json.get text="${repo}" path="stargazers_count" var=stars
+echo Repository: ${repo_name}
+echo Stars: ${stars}
 
 // Try-catch для обработки ошибок
-try:
-    file read path="config.json"
-    json.parse file="config.json" var="config"
-catch:
-    echo Error: Config not found, using defaults
+try body="file.read path=config.json var=cfg && json.parse text=${cfg} var=config" catch="echo Error: Config not found, using defaults"
 ```
 
 ### **Мощные конструкции языка**
 ```wflow
 // Циклы
-loop.repeat count=3:
-    echo Iteration ${index}
+loop.repeat count=3 body="echo Iteration ${index}"
+
+loop.foreach items="apple,banana,orange" var=item body="echo Processing: ${item}"
 
 // Условия
-if condition="${status}" equals="ok":
-    echo Success!
-    env set result=passed
-else:
-    echo Failed
-    exit code=1
-
-// Работа с массивами
-array.create name=items values="apple,banana,orange"
-loop.foreach array=items element=item:
-    echo Processing: ${item}
+if condition="${status} == ok" body="echo Success!" else="echo Failed"
 ```
 
 ### **Модули и встроенные команды**
 
 | Модуль | Описание | Примеры команд |
 |--------|----------|----------------|
-| **env** | Переменные окружения | `env set`, `env get`, `env print` |
-| **file** | Файловые операции | `file read`, `file write`, `file copy`, `file delete` |
-| **process** | Запуск процессов | `process.exec`, `process.start` |
-| **json** | Работа с JSON | `json.parse`, `json.get`, `json.set` |
-| **net** | HTTP/сеть | `net download`, `net request` |
-| **array** | Массивы | `array.create`, `array.add`, `array.get` |
+| **env** | Переменные окружения | `env.set`, `env.get`, `env.print` |
+| **file** | Файловые операции | `file.read`, `file.write`, `file.copy`, `file.delete` |
+| **process** | Запуск процессов | `process.exec`, `process.run` |
+| **json** | Работа с JSON | `json.parse`, `json.get` |
+| **net** | HTTP/сеть | `net.download` |
+| **http** | HTTP запросы | `http.get`, `http.post`, `http.put` |
+| **array** | Массивы | `array.split`, `array.join`, `array.length` |
+| **string** | Строковые операции | `string.replace`, `string.upper`, `string.lower` |
+| **math** | Математика | `math.add`, `math.subtract`, `math.multiply`, `math.divide` |
+| **datetime** | Дата и время | `datetime.now`, `datetime.format`, `datetime.add` |
+| **path** | Работа с путями | `path.join`, `path.dirname`, `path.basename` |
+| **regex** | Регулярные выражения | `regex.match`, `regex.find`, `regex.replace` |
+| **archive** | Архивы (ZIP) | `archive.create`, `archive.extract`, `archive.list` |
+| **log** | Логирование | `log.info`, `log.warning`, `log.error` |
+| **config** | INI конфигурация | `config.read`, `config.get`, `config.set` |
+| **csv** | CSV таблицы | `csv.read`, `csv.write`, `csv.filter` |
+| **xml** | XML документы | `xml.parse`, `xml.get`, `xml.add_element` |
+| **registry** | Реестр Windows | `registry.get`, `registry.set`, `registry.delete` |
+| **async** | Асинхронность | `async.start`, `async.wait`, `async.status` |
+| **input** | Ввод пользователя | `input.text`, `input.password`, `input.confirm` |
 
 ## 🚀 Быстрый старт
 
@@ -164,10 +168,14 @@ build_project("Release")
 define fetch_user_data(username):
     env set api_url="https://api.github.com/users/${username}"
     net download url="${api_url}" path="user.json"
-    json.parse file="user.json" var="user"
-    echo User: ${user.login}
-    echo Repos: ${user.public_repos}
-    echo Followers: ${user.followers}
+    file read path="user.json" var=json_data
+    json.parse text="${json_data}" var=user
+    json.get text="${user}" path="login" var=user_login
+    json.get text="${user}" path="public_repos" var=repos
+    json.get text="${user}" path="followers" var=followers
+    echo User: ${user_login}
+    echo Repos: ${repos}
+    echo Followers: ${followers}
 
 fetch_user_data("octocat")
 ```
@@ -226,9 +234,9 @@ Get-ChildItem test-*.wflow | ForEach-Object {
 - ✅ **Поддержка переменных в функциях**: полная подстановка `${variable}`
 
 ### v0.1.9
-- ✅ JSON парсинг и манипуляция (`json.parse`, `json.get`, `json.set`)
-- ✅ HTTP запросы (`net download`, `net request`)
-- ✅ Массивы (`array.create`, `array.add`, `array.get`, `array.length`)
+- ✅ JSON парсинг и манипуляция (`json.parse`, `json.get`)
+- ✅ HTTP запросы (`http.get`, `http.post`, `http.put`, `net.download`)
+- ✅ Массивы (`array.split`, `array.join`, `array.length`)
 - ✅ Try-catch блоки для обработки ошибок
 - ✅ Базовые функции (`define`, `call`)
 

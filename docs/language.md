@@ -68,36 +68,31 @@ loop.repeat count=3:
 - Доступна переменная `${index}` (0..N-1)
 - Многострочное тело с отступом
 
-### loop.foreach — итерация по массиву
+### loop.foreach — итерация по элементам
 
 ```wflow
-array.create name=items values="apple,banana,orange"
-
-loop.foreach array=items element=item:
-    echo Processing: ${item}
-    echo Index: ${index}
+loop.foreach items="apple,banana,orange" var=item body="echo Processing: ${item} (Index: ${index})"
 ```
 
-- Параметры: `array` (имя массива), `element` (имя переменной)
-- Доступны: `${element}`, `${index}`
+- Параметры: `items` (строка через запятую), `var` (имя переменной элемента), `body` (тело цикла)
+- Доступны: `${var}`, `${index}`
 
 Подробнее: [Продвинутые возможности](advanced.md)
 
 ## Условия
 
 ```wflow
-if condition="${status}" equals="ok":
-    echo Success!
-    env set result=passed
-else:
-    echo Failed
-    exit code=1
+if condition="${status} == ok" body="echo Success! && env.set name=result value=passed" else="echo Failed && exit code=1"
 ```
 
 **Операторы сравнения:**
-- `equals` / `not_equals`
-- `greater` / `less`
-- `contains`
+- ` == ` — равенство
+- ` != ` — неравенство
+- ` > ` — больше
+- ` < ` — меньше
+- `exists <path>` — проверка существования файла/директории
+
+**Примечание:** Условие передается в параметре `condition`, тело в `body`, альтернатива в `else`.
 
 Подробнее: [Продвинутые возможности](advanced.md)
 
@@ -149,27 +144,80 @@ catch:
 - `net request url="..." method="..." var="..."` — HTTP запрос
 
 ### Array — массивы (v0.1.9+)
-- `array.create name="..." values="..."` — создать массив
-- `array.add name="..." value="..."` — добавить элемент
-- `array.get name="..." index=N` — получить элемент
-- `array.length name="..."` — получить размер
+- `array.split text="..." [sep=","] [var="..."]` — разделить строку на массив (JSON)
+- `array.join array="[...]" [sep=","] [var="..."]` — объединить массив в строку
+- `array.length array="[...]" [var="..."]` — получить размер массива
 
 ### String — строки
-- `string.replace text="..." find="..." replace="..."` — замена
-- `string.contains text="..." find="..."` — проверка вхождения
+- `string.replace text="..." from="..." to="..."` — замена
+- `string.contains text="..." pattern="..."` — проверка вхождения
 - `string.length text="..."` — длина строки
 - `string.upper text="..."` — в верхний регистр
 - `string.lower text="..."` — в нижний регистр
 - `string.trim text="..."` — удалить пробелы
+- `string.concat left="..." right="..." [sep="..."]` — объединение строк
+- `string.format template="..." 0="..." 1="..."` — форматирование
 
 ### Registry — реестр Windows
-- `reg set key="..." value="..." data="..."` — установить значение
-- `reg get key="..." value="..."` — получить значение
-- `reg delete key="..." value="..."` — удалить значение
+- `reg set key="..." name="..." value="..."` — установить значение
+- `reg get key="..." name="..."` — получить значение
+- `reg delete key="..." [name="..."]` — удалить значение
+- `registry.set key="..." value="..." data="..."` — установить (с дефолтами)
+- `registry.get key="..." value="..." [var="..."]` — получить (с дефолтами)
+- `registry.exists key="..." [var="..."]` — проверить существование
+- `registry.delete key="..." [value="..."]` — удалить
 
 ### Sleep — задержки
-- `sleep ms=<N>` — задержка в миллисекундах
-- `sleep sec=<N>` — задержка в секундах
+- `sleep.ms ms=<N>` — задержка в миллисекундах
+- `sleep.sec sec=<N>` — задержка в секундах
+
+### HTTP — HTTP запросы
+- `http.get url="..." [var="..."]` — GET запрос
+- `http.post url="..." [body="..."] [var="..."]` — POST запрос
+- `http.put url="..." [body="..."] [var="..."]` — PUT запрос
+
+### Math — математические операции
+- `math.add a=<N> b=<N> [var="..."]` — сложение
+- `math.subtract a=<N> b=<N> [var="..."]` — вычитание
+- `math.multiply a=<N> b=<N> [var="..."]` — умножение
+- `math.divide a=<N> b=<N> [var="..."]` — деление
+- `math.round value=<N> [decimals=<N>] [var="..."]` — округление
+- `math.floor value=<N> [var="..."]` — округление вниз
+- `math.ceil value=<N> [var="..."]` — округление вверх
+
+### DateTime — работа с датой и временем
+- `datetime.now [format="..."] [var="..."]` — текущее время
+- `datetime.format date="..." [format="..."] [var="..."]` — форматировать
+- `datetime.parse text="..." [var="..."]` — парсить дату
+- `datetime.add date="..." [days=<N>] [hours=<N>] [var="..."]` — добавить время
+- `datetime.diff start="..." end="..." [unit="..."] [var="..."]` — разница
+
+### Path — работа с путями
+- `path.join parts="..." [var="..."]` — объединить части пути
+- `path.dirname path="..." [var="..."]` — получить директорию
+- `path.basename path="..." [var="..."]` — получить имя файла
+- `path.extension path="..." [var="..."]` — получить расширение
+- `path.exists path="..." [var="..."]` — проверить существование
+- `path.is_directory path="..." [var="..."]` — проверка директории
+- `path.normalize path="..." [var="..."]` — нормализовать путь
+
+### Log — логирование
+- `log.config [level="..."] [file="..."] [format="..."]` — настроить
+- `log.info message="..."` — информация
+- `log.debug message="..."` — отладка
+- `log.warning message="..."` — предупреждение
+- `log.error message="..."` — ошибка
+
+### Regex — регулярные выражения
+- `regex.match pattern="..." text="..." [var="..."]` — проверить соответствие
+- `regex.find pattern="..." text="..." [var="..."]` — найти совпадения
+- `regex.replace pattern="..." replacement="..." text="..." [var="..."]` — заменить
+
+### Archive — работа с архивами
+- `archive.create source="..." destination="..." [var="..."]` — создать ZIP
+- `archive.extract source="..." destination="..."` — распаковать ZIP
+- `archive.list file="..." [var="..."]` — список файлов в архиве
+- `archive.add archive="..." files="..."` — добавить файлы
 
 Подробный справочник: [Команды](commands.md)
 

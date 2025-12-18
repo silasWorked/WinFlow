@@ -200,12 +200,7 @@ define check_file(filepath):
 ```wflow
 define process_list(items):
     echo Processing items: ${items}
-    
-    array.create name=arr values="${items}"
-    
-    loop.foreach array=arr element=item:
-        echo Processing item: ${item}
-        file write path="${item}.log" content="Processed at ${date}"
+    loop.foreach items="${items}" var=item body="echo Processing item: ${item} && file.write path=${item}.log content=Processed"
 ```
 
 ### Функция с обработкой ошибок
@@ -313,13 +308,16 @@ define cleanup_backups():
 ```wflow
 define fetch_json(url, output_file):
     net download url="${url}" path="${output_file}"
-    json.parse file="${output_file}" var="data"
+    file read path="${output_file}" var=json_content
+    json.parse text="${json_content}" var=data
 
 define get_repo_info(owner, repo):
     env set api_url="https://api.github.com/repos/${owner}/${repo}"
     fetch_json("${api_url}", "repo.json")
-    echo Repository: ${data.name}
-    echo Stars: ${data.stargazers_count}
+    json.get text="${data}" path="name" var=repo_name
+    json.get text="${data}" path="stargazers_count" var=stars
+    echo Repository: ${repo_name}
+    echo Stars: ${stars}
 
 // Использование
 get_repo_info("silasWorked", "WinFlow")
