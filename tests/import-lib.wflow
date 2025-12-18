@@ -1,5 +1,8 @@
 # Library for import module tests
 env.set name=LIB_TOP value=should_not_set
 
-define name=lib.greet body="echo [import] Hello ${0}"
-define name=lib.tag body="echo [import] Tag ${0}"
+define lib.greet(greeting):
+    echo [import] Hello ${greeting}
+
+define lib.tag(number):
+    echo [import] Tag ${number}

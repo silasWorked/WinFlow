@@ -22,8 +22,11 @@ try body="echo This works" catch="echo Error: ${_error}"
 try body="env.set" catch="echo Error caught in catch block"
 
 echo "=== Test 4: Define/Call ==="
-define name=greet body="echo Greetings!"
-define name=add_message body="echo Function body can run: echo Success"
+define greet():
+    echo Greetings!
+
+define add_message():
+    echo Function body can run: echo Success
 
 call name=greet
 call name=add_message

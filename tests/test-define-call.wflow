@@ -1,8 +1,11 @@
 // Test define and call
 env.set name=NAME value=WinFlow
 
-define name=greet body="echo Hello ${NAME}!"
-define name=add body="echo Adding values"
+define greet():
+    echo Hello ${NAME}!
+
+define add():
+    echo Adding values
 
 call name=greet
 call name=add

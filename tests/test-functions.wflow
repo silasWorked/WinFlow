@@ -1,4 +1,5 @@
 // Test define and call
-define name=greet body="echo Hello ${0}!"
+define greet(name):
+    echo Hello ${name}!
 
-call name=greet arg0=WinFlow
+call name=greet name=WinFlow
