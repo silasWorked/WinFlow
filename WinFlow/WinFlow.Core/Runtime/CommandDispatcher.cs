@@ -1,9 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Xml.Linq;
+using System.Xml.XPath;
 using Microsoft.Win32;
 using ExecutionContext = WinFlow.Core.Model.ExecutionContext;
 using WinFlow.Core.Model;
@@ -691,6 +697,586 @@ namespace WinFlow.Core.Runtime
                 var tasks = parser.Parse(full);
                 var exec = new TaskExecutor();
                 exec.Run(tasks, ctx);
+            });
+
+            // Import module (register functions without executing top-level code)
+            Register("import", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("import requires path=<script.wflow>");
+                var full = System.IO.Path.IsPathRooted(path)
+                    ? path
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, path);
+                if (!System.IO.File.Exists(full))
+                    throw new System.IO.FileNotFoundException($"Import file not found: {path}");
+
+                WinFlow.Core.Parsing.IParser parser = new WinFlow.Core.Parsing.WinFlowParser();
+                parser.Parse(full); // functions are registered during parse
+                ctx.Log($"imported {full}");
+            });
+
+            // Config (INI) module
+            Register("config.create", (cmd, ctx) =>
+            {
+                var cfg = new ConfigData();
+                var id = StoreObject(ctx, cfg);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "CONFIG";
+                ctx.Environment[varName] = id;
+                ctx.Log($"config.create -> {id}");
+            });
+
+            Register("config.read", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("file", out var file))
+                    throw new ArgumentException("config.read requires file=<path>");
+                var full = System.IO.Path.IsPathRooted(file)
+                    ? file
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, file);
+                if (!System.IO.File.Exists(full))
+                    throw new System.IO.FileNotFoundException($"Config file not found: {file}");
+
+                var cfg = ParseIni(System.IO.File.ReadAllLines(full));
+                var id = StoreObject(ctx, cfg);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "CONFIG";
+                ctx.Environment[varName] = id;
+                ctx.Log($"config.read {file} -> {id}");
+            });
+
+            Register("config.get", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("config", out var cfgId))
+                    throw new ArgumentException("config.get requires config=<id>");
+                if (!cmd.Args.TryGetValue("section", out var section))
+                    throw new ArgumentException("config.get requires section=<name>");
+                if (!cmd.Args.TryGetValue("key", out var key))
+                    throw new ArgumentException("config.get requires key=<name>");
+                cmd.Args.TryGetValue("default", out var defaultVal);
+
+                if (!TryGetObject<ConfigData>(ctx, cfgId, out var cfg))
+                    throw new ArgumentException($"config id not found: {cfgId}");
+
+                var value = defaultVal ?? string.Empty;
+                if (cfg.Sections.TryGetValue(section, out var sec) && sec.TryGetValue(key, out var found))
+                    value = found;
+
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "CONFIG_VALUE";
+                ctx.Environment[varName] = value;
+                ctx.Log($"config.get [{section}] {key} -> {value}");
+            });
+
+            Register("config.set", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("config", out var cfgId))
+                    throw new ArgumentException("config.set requires config=<id>");
+                if (!cmd.Args.TryGetValue("section", out var section))
+                    throw new ArgumentException("config.set requires section=<name>");
+                if (!cmd.Args.TryGetValue("key", out var key))
+                    throw new ArgumentException("config.set requires key=<name>");
+                if (!cmd.Args.TryGetValue("value", out var value))
+                    throw new ArgumentException("config.set requires value=<val>");
+
+                if (!TryGetObject<ConfigData>(ctx, cfgId, out var cfg))
+                    throw new ArgumentException($"config id not found: {cfgId}");
+
+                if (!cfg.Sections.TryGetValue(section, out var sec))
+                {
+                    sec = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    cfg.Sections[section] = sec;
+                }
+                sec[key] = value;
+
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : null;
+                if (!string.IsNullOrWhiteSpace(varName))
+                    ctx.Environment[varName!] = cfgId;
+                ctx.Log($"config.set [{section}] {key} = {value}");
+            });
+
+            Register("config.write", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("config", out var cfgId))
+                    throw new ArgumentException("config.write requires config=<id>");
+                if (!cmd.Args.TryGetValue("file", out var file))
+                    throw new ArgumentException("config.write requires file=<path>");
+                var full = System.IO.Path.IsPathRooted(file)
+                    ? file
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, file);
+
+                if (!TryGetObject<ConfigData>(ctx, cfgId, out var cfg))
+                    throw new ArgumentException($"config id not found: {cfgId}");
+
+                var lines = new List<string>();
+                foreach (var section in cfg.Sections)
+                {
+                    lines.Add($"[{section.Key}]");
+                    foreach (var kv in section.Value)
+                        lines.Add($"{kv.Key}={kv.Value}");
+                    lines.Add(string.Empty);
+                }
+                System.IO.File.WriteAllLines(full, lines);
+                ctx.Log($"config.write -> {full}");
+            });
+
+            // CSV module
+            Register("csv.read", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("file", out var file))
+                    throw new ArgumentException("csv.read requires file=<path>");
+                var full = System.IO.Path.IsPathRooted(file)
+                    ? file
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, file);
+                if (!System.IO.File.Exists(full))
+                    throw new System.IO.FileNotFoundException($"CSV file not found: {file}");
+                var hasHeader = cmd.Args.TryGetValue("has_header", out var hh) && hh.Equals("true", StringComparison.OrdinalIgnoreCase);
+                var lines = System.IO.File.ReadAllLines(full);
+                var data = new CsvData { HasHeader = hasHeader };
+
+                if (lines.Length > 0)
+                {
+                    var startIdx = 0;
+                    if (hasHeader)
+                    {
+                        data.Headers = lines[0].Split(',', StringSplitOptions.TrimEntries).ToList();
+                        startIdx = 1;
+                    }
+                    else
+                    {
+                        var firstCols = lines[0].Split(',', StringSplitOptions.TrimEntries).Length;
+                        for (int i = 0; i < firstCols; i++) data.Headers.Add($"col{i+1}");
+                    }
+
+                    for (int i = startIdx; i < lines.Length; i++)
+                    {
+                        var cols = lines[i].Split(',', StringSplitOptions.TrimEntries);
+                        var rowId = $"csvrow_{Guid.NewGuid():N}";
+                        var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        for (int c = 0; c < data.Headers.Count && c < cols.Length; c++)
+                            row[data.Headers[c]] = cols[c];
+                        data.Rows[rowId] = row;
+                        data.RowIds.Add(rowId);
+                    }
+                }
+
+                var dataId = StoreObject(ctx, data);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "CSV";
+                ctx.Environment[varName] = string.Join(",", data.RowIds);
+                ctx.Environment[$"{varName}_id"] = dataId;
+                ctx.Log($"csv.read {file} rows={data.RowIds.Count}");
+            });
+
+            Register("csv.create", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("headers", out var headers))
+                    throw new ArgumentException("csv.create requires headers=<a,b,c>");
+                var data = new CsvData
+                {
+                    Headers = headers.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList(),
+                    HasHeader = true
+                };
+                var dataId = StoreObject(ctx, data);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "CSV";
+                ctx.Environment[varName] = dataId;
+                ctx.Environment[$"{varName}_id"] = dataId;
+                ctx.Log($"csv.create {string.Join(",", data.Headers)}");
+            });
+
+            Register("csv.add_row", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("data", out var dataArg))
+                    throw new ArgumentException("csv.add_row requires data=<id>");
+                if (!cmd.Args.TryGetValue("values", out var valuesStr))
+                    throw new ArgumentException("csv.add_row requires values=<v1,v2>");
+                var data = ResolveCsvData(ctx, dataArg, out var rowIdsRef);
+                var cols = valuesStr.Split(',', StringSplitOptions.TrimEntries);
+                var rowId = $"csvrow_{Guid.NewGuid():N}";
+                var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < data.Headers.Count && i < cols.Length; i++)
+                    row[data.Headers[i]] = cols[i];
+                data.Rows[rowId] = row;
+                data.RowIds.Add(rowId);
+                rowIdsRef.Add(rowId);
+                if (cmd.Args.TryGetValue("var", out var v))
+                    ctx.Environment[v] = string.Join(",", rowIdsRef);
+                ctx.Log($"csv.add_row -> {rowId}");
+            });
+
+            Register("csv.get_field", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("row", out var rowId))
+                    throw new ArgumentException("csv.get_field requires row=<rowId>");
+                if (!cmd.Args.TryGetValue("field", out var field))
+                    throw new ArgumentException("csv.get_field requires field=<name>");
+                var row = ResolveCsvRow(ctx, rowId, out _);
+                var value = row.TryGetValue(field, out var v) ? v : string.Empty;
+                var varName = cmd.Args.TryGetValue("var", out var vn) ? vn : "CSV_FIELD";
+                ctx.Environment[varName] = value;
+                ctx.Log($"csv.get_field {field} -> {value}");
+            });
+
+            Register("csv.write", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("data", out var dataArg))
+                    throw new ArgumentException("csv.write requires data=<id>");
+                if (!cmd.Args.TryGetValue("file", out var file))
+                    throw new ArgumentException("csv.write requires file=<path>");
+                var full = System.IO.Path.IsPathRooted(file)
+                    ? file
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, file);
+
+                var data = ResolveCsvData(ctx, dataArg, out var rowsToWrite);
+                var lines = new List<string>();
+                if (data.HasHeader && data.Headers.Count > 0)
+                    lines.Add(string.Join(",", data.Headers));
+                foreach (var rowId in rowsToWrite)
+                {
+                    if (!data.Rows.TryGetValue(rowId, out var row)) continue;
+                    var cols = data.Headers.Select(h => row.TryGetValue(h, out var v) ? v : string.Empty);
+                    lines.Add(string.Join(",", cols));
+                }
+                System.IO.File.WriteAllLines(full, lines);
+                ctx.Log($"csv.write -> {full}");
+            });
+
+            Register("csv.filter", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("data", out var dataArg))
+                    throw new ArgumentException("csv.filter requires data=<id>");
+                if (!cmd.Args.TryGetValue("column", out var column))
+                    throw new ArgumentException("csv.filter requires column=<name>");
+                if (!cmd.Args.TryGetValue("value", out var value))
+                    throw new ArgumentException("csv.filter requires value=<val>");
+
+                var data = ResolveCsvData(ctx, dataArg, out var rows);
+                var filtered = new CsvData
+                {
+                    Headers = new List<string>(data.Headers),
+                    HasHeader = data.HasHeader
+                };
+                foreach (var rowId in rows)
+                {
+                    if (!data.Rows.TryGetValue(rowId, out var row)) continue;
+                    if (row.TryGetValue(column, out var v) && string.Equals(v, value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        filtered.RowIds.Add(rowId);
+                        filtered.Rows[rowId] = row;
+                    }
+                }
+                var fid = StoreObject(ctx, filtered);
+                var varName = cmd.Args.TryGetValue("var", out var vn) ? vn : "CSV_FILTERED";
+                ctx.Environment[varName] = string.Join(",", filtered.RowIds);
+                ctx.Environment[$"{varName}_id"] = fid;
+                ctx.Log($"csv.filter {filtered.RowIds.Count} rows");
+            });
+
+            Register("csv.sort", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("data", out var dataArg))
+                    throw new ArgumentException("csv.sort requires data=<id>");
+                if (!cmd.Args.TryGetValue("column", out var column))
+                    throw new ArgumentException("csv.sort requires column=<name>");
+                var order = cmd.Args.TryGetValue("order", out var ord) ? ord.ToLowerInvariant() : "asc";
+
+                var data = ResolveCsvData(ctx, dataArg, out var rows);
+                var sortedRows = rows
+                    .Select(id => new { id, value = data.Rows.TryGetValue(id, out var r) && r.TryGetValue(column, out var v) ? v : string.Empty })
+                    .OrderBy(x => x.value, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (order == "desc") sortedRows.Reverse();
+
+                var sorted = new CsvData
+                {
+                    Headers = new List<string>(data.Headers),
+                    HasHeader = data.HasHeader,
+                    RowIds = sortedRows.Select(x => x.id).ToList()
+                };
+                foreach (var id in sorted.RowIds)
+                    sorted.Rows[id] = data.Rows[id];
+
+                var sid = StoreObject(ctx, sorted);
+                var varName = cmd.Args.TryGetValue("var", out var vn) ? vn : "CSV_SORTED";
+                ctx.Environment[varName] = string.Join(",", sorted.RowIds);
+                ctx.Environment[$"{varName}_id"] = sid;
+                ctx.Log($"csv.sort {sorted.RowIds.Count} rows order={order}");
+            });
+
+            // Registry (friendly aliases with defaults)
+            Register("registry.get", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("key", out var keyPath))
+                    throw new ArgumentException("registry.get requires key=<path>");
+                if (!cmd.Args.TryGetValue("value", out var valueName))
+                    throw new ArgumentException("registry.get requires value=<name>");
+                var hive = cmd.Args.TryGetValue("hive", out var hv) ? hv : "HKCU";
+                cmd.Args.TryGetValue("default", out var defaultVal);
+
+                var baseKey = ResolveHive(hive);
+                using var key = baseKey.OpenSubKey(keyPath);
+                var val = key?.GetValue(valueName, defaultVal ?? string.Empty)?.ToString() ?? defaultVal ?? string.Empty;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "REG_VALUE";
+                ctx.Environment[varName] = val;
+                ctx.Log($"registry.get [{hive}] {keyPath} {valueName} -> {val}");
+            });
+
+            Register("registry.set", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("key", out var keyPath))
+                    throw new ArgumentException("registry.set requires key=<path>");
+                if (!cmd.Args.TryGetValue("value", out var valueName))
+                    throw new ArgumentException("registry.set requires value=<name>");
+                if (!cmd.Args.TryGetValue("data", out var data))
+                    throw new ArgumentException("registry.set requires data=<value>");
+                cmd.Args.TryGetValue("type", out var type);
+                var hive = cmd.Args.TryGetValue("hive", out var hv) ? hv : "HKCU";
+                var baseKey = ResolveHive(hive);
+                using var key = baseKey.CreateSubKey(keyPath);
+                var kind = ResolveValueKind(type);
+                key!.SetValue(valueName, data, kind);
+                ctx.Log($"registry.set [{hive}] {keyPath} {valueName} = {data}");
+            });
+
+            Register("registry.exists", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("key", out var keyPath))
+                    throw new ArgumentException("registry.exists requires key=<path>");
+                var hive = cmd.Args.TryGetValue("hive", out var hv) ? hv : "HKCU";
+                var baseKey = ResolveHive(hive);
+                var exists = baseKey.OpenSubKey(keyPath) != null;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "REG_EXISTS";
+                ctx.Environment[varName] = exists.ToString().ToLowerInvariant();
+                ctx.Log($"registry.exists [{hive}] {keyPath} = {exists}");
+            });
+
+            Register("registry.delete", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("key", out var keyPath))
+                    throw new ArgumentException("registry.delete requires key=<path>");
+                var hive = cmd.Args.TryGetValue("hive", out var hv) ? hv : "HKCU";
+                var baseKey = ResolveHive(hive);
+                if (cmd.Args.TryGetValue("value", out var valueName))
+                {
+                    using var key = baseKey.OpenSubKey(keyPath, writable: true);
+                    key?.DeleteValue(valueName, throwOnMissingValue: false);
+                    ctx.Log($"registry.delete value [{hive}] {keyPath} {valueName}");
+                }
+                else
+                {
+                    try { baseKey.DeleteSubKeyTree(keyPath, throwOnMissingSubKey: false); } catch { }
+                    ctx.Log($"registry.delete key [{hive}] {keyPath}");
+                }
+            });
+
+            // XML module
+            Register("xml.create", (cmd, ctx) =>
+            {
+                var doc = new XDocument(new XElement("root"));
+                var id = StoreObject(ctx, doc);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "XML";
+                ctx.Environment[varName] = id;
+                ctx.Log($"xml.create -> {id}");
+            });
+
+            Register("xml.parse", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("file", out var file))
+                    throw new ArgumentException("xml.parse requires file=<path>");
+                var full = System.IO.Path.IsPathRooted(file)
+                    ? file
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, file);
+                if (!System.IO.File.Exists(full))
+                    throw new System.IO.FileNotFoundException($"XML file not found: {file}");
+                var doc = XDocument.Load(full);
+                var id = StoreObject(ctx, doc);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "XML";
+                ctx.Environment[varName] = id;
+                ctx.Log($"xml.parse {file} -> {id}");
+            });
+
+            Register("xml.add_element", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("parent", out var parentId))
+                    throw new ArgumentException("xml.add_element requires parent=<id>");
+                if (!cmd.Args.TryGetValue("tag", out var tag))
+                    throw new ArgumentException("xml.add_element requires tag=<name>");
+
+                if (!TryResolveXmlNode(ctx, parentId, out var doc, out var parent))
+                    throw new ArgumentException($"xml parent not found: {parentId}");
+
+                var elem = new XElement(tag);
+                if (parent != null)
+                    parent.Add(elem);
+                else
+                    doc.Add(elem);
+
+                var elemId = StoreObject(ctx, elem);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "XML_NODE";
+                ctx.Environment[varName] = elemId;
+                ctx.Log($"xml.add_element {tag} -> {elemId}");
+            });
+
+            Register("xml.set_attribute", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("element", out var elemId))
+                    throw new ArgumentException("xml.set_attribute requires element=<id>");
+                if (!cmd.Args.TryGetValue("name", out var name))
+                    throw new ArgumentException("xml.set_attribute requires name=<attr>");
+                if (!cmd.Args.TryGetValue("value", out var value))
+                    throw new ArgumentException("xml.set_attribute requires value=<val>");
+
+                if (!TryGetObject<XElement>(ctx, elemId, out var elem))
+                    throw new ArgumentException($"xml element not found: {elemId}");
+                elem.SetAttributeValue(name, value);
+                ctx.Log($"xml.set_attribute {name}={value}");
+            });
+
+            Register("xml.get", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("data", out var dataId))
+                    throw new ArgumentException("xml.get requires data=<id>");
+                if (!cmd.Args.TryGetValue("xpath", out var xpath))
+                    throw new ArgumentException("xml.get requires xpath=<expr>");
+                if (!TryResolveXmlNode(ctx, dataId, out var doc, out var node))
+                    throw new ArgumentException($"xml data not found: {dataId}");
+                var target = (node ?? doc.Root)?.XPathSelectElement(xpath);
+                var value = target?.Value ?? string.Empty;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "XML_VALUE";
+                ctx.Environment[varName] = value;
+                ctx.Log($"xml.get {xpath} -> {value}");
+            });
+
+            Register("xml.write", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("data", out var dataId))
+                    throw new ArgumentException("xml.write requires data=<id>");
+                if (!cmd.Args.TryGetValue("file", out var file))
+                    throw new ArgumentException("xml.write requires file=<path>");
+                var full = System.IO.Path.IsPathRooted(file)
+                    ? file
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, file);
+                if (!TryResolveXmlNode(ctx, dataId, out var doc, out _))
+                    throw new ArgumentException($"xml data not found: {dataId}");
+                doc.Save(full);
+                ctx.Log($"xml.write -> {full}");
+            });
+
+            // Async module
+            Register("async.start", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("command", out var command))
+                    throw new ArgumentException("async.start requires command=<...>");
+                var id = cmd.Args.TryGetValue("var", out var v) ? v : $"task_{Guid.NewGuid():N}";
+                var task = Task.Run(() => RunInline(command, ctx));
+                ctx.AsyncTasks[id] = task;
+                ctx.Environment[id] = id;
+                ctx.Log($"async.start {id}");
+            });
+
+            Register("async.wait", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("task", out var taskId))
+                    throw new ArgumentException("async.wait requires task=<id>");
+                if (!ctx.AsyncTasks.TryGetValue(taskId, out var task))
+                    throw new ArgumentException($"task not found: {taskId}");
+                var timeoutMs = cmd.Args.TryGetValue("timeout", out var t) && int.TryParse(t, out var ms) ? ms * 1000 : -1;
+                if (timeoutMs >= 0)
+                    task.Wait(timeoutMs);
+                else
+                    task.Wait();
+                var status = task.IsCompleted ? "completed" : task.Status.ToString().ToLowerInvariant();
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "ASYNC_STATUS";
+                ctx.Environment[varName] = status;
+                ctx.Log($"async.wait {taskId} -> {status}");
+            });
+
+            Register("async.wait_all", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("tasks", out var tasksStr))
+                    throw new ArgumentException("async.wait_all requires tasks=<id1,id2>");
+                var ids = tasksStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var tasks = ids.Select(id => ctx.AsyncTasks.TryGetValue(id, out var t) ? t : null).Where(t => t != null).ToArray();
+                Task.WaitAll(tasks!);
+                ctx.Log($"async.wait_all {ids.Length} tasks");
+            });
+
+            Register("async.status", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("task", out var taskId))
+                    throw new ArgumentException("async.status requires task=<id>");
+                if (!ctx.AsyncTasks.TryGetValue(taskId, out var task))
+                    throw new ArgumentException($"task not found: {taskId}");
+                var status = task.Status.ToString().ToLowerInvariant();
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "ASYNC_STATUS";
+                ctx.Environment[varName] = status;
+                ctx.Log($"async.status {taskId} -> {status}");
+            });
+
+            // Input module
+            Register("input.text", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("prompt", out var prompt))
+                    throw new ArgumentException("input.text requires prompt=<text>");
+                cmd.Args.TryGetValue("default", out var def);
+                Console.Write(prompt);
+                var input = Console.ReadLine();
+                if (string.IsNullOrEmpty(input)) input = def ?? string.Empty;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "INPUT";
+                ctx.Environment[varName] = input;
+                ctx.Log($"input.text -> {input}");
+            });
+
+            Register("input.password", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("prompt", out var prompt))
+                    throw new ArgumentException("input.password requires prompt=<text>");
+                Console.Write(prompt);
+                var sb = new System.Text.StringBuilder();
+                ConsoleKeyInfo key;
+                while ((key = Console.ReadKey(intercept: true)).Key != ConsoleKey.Enter)
+                {
+                    if (key.Key == ConsoleKey.Backspace && sb.Length > 0)
+                    {
+                        sb.Length--;
+                        continue;
+                    }
+                    sb.Append(key.KeyChar);
+                }
+                Console.WriteLine();
+                var input = sb.ToString();
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "INPUT";
+                ctx.Environment[varName] = input;
+                ctx.Log("input.password captured");
+            });
+
+            Register("input.confirm", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("prompt", out var prompt))
+                    throw new ArgumentException("input.confirm requires prompt=<text>");
+                var def = cmd.Args.TryGetValue("default", out var d) ? d : "no";
+                Console.Write($"{prompt} (y/n) [{def}]: ");
+                var input = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(input)) input = def;
+                var result = input!.StartsWith("y", StringComparison.OrdinalIgnoreCase) ? "true" : "false";
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "CONFIRM";
+                ctx.Environment[varName] = result;
+                ctx.Log($"input.confirm -> {result}");
+            });
+
+            Register("input.choice", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("prompt", out var prompt))
+                    throw new ArgumentException("input.choice requires prompt=<text>");
+                if (!cmd.Args.TryGetValue("options", out var options))
+                    throw new ArgumentException("input.choice requires options=<a,b,c>");
+                var opts = options.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                Console.WriteLine(prompt);
+                for (int i = 0; i < opts.Length; i++)
+                    Console.WriteLine($"[{i + 1}] {opts[i]}");
+                Console.Write("Select: ");
+                var input = Console.ReadLine();
+                if (!int.TryParse(input, out var idx) || idx < 1 || idx > opts.Length)
+                    idx = 1;
+                var choice = opts[idx - 1];
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "CHOICE";
+                ctx.Environment[varName] = choice;
+                ctx.Log($"input.choice -> {choice}");
             });
 
             // Try module (error handling)
@@ -1429,6 +2015,122 @@ namespace WinFlow.Core.Runtime
             // fallback: treat as boolean string
             var val = Expand(condition, ctx);
             return IsTrue(val);
+        }
+
+        private static string StoreObject(ExecutionContext ctx, object obj, string? preferredId = null)
+        {
+            var id = string.IsNullOrWhiteSpace(preferredId) ? $"obj_{Guid.NewGuid():N}" : preferredId;
+            ctx.ObjectStore[id] = obj;
+            return id;
+        }
+
+        private static bool TryGetObject<T>(ExecutionContext ctx, string id, out T obj)
+        {
+            if (ctx.ObjectStore.TryGetValue(id, out var value) && value is T typed)
+            {
+                obj = typed;
+                return true;
+            }
+            obj = default!;
+            return false;
+        }
+
+        private class ConfigData
+        {
+            public Dictionary<string, Dictionary<string, string>> Sections { get; } = new(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private class CsvData
+        {
+            public List<string> Headers { get; set; } = new();
+            public List<string> RowIds { get; set; } = new();
+            public Dictionary<string, Dictionary<string, string>> Rows { get; } = new(StringComparer.OrdinalIgnoreCase);
+            public bool HasHeader { get; set; } = true;
+        }
+
+        private class XmlHolder
+        {
+            public XDocument Document { get; set; } = new();
+        }
+
+        private static ConfigData ParseIni(string[] lines)
+        {
+            var cfg = new ConfigData();
+            string current = "";
+            foreach (var raw in lines)
+            {
+                var line = raw.Trim();
+                if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#") || line.StartsWith("//"))
+                    continue;
+                if (line.StartsWith("[") && line.EndsWith("]"))
+                {
+                    current = line.Substring(1, line.Length - 2);
+                    if (!cfg.Sections.ContainsKey(current))
+                        cfg.Sections[current] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    continue;
+                }
+                var idx = line.IndexOf('=');
+                if (idx > 0)
+                {
+                    var key = line.Substring(0, idx).Trim();
+                    var val = line.Substring(idx + 1).Trim();
+                    if (!cfg.Sections.ContainsKey(current))
+                        cfg.Sections[current] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    cfg.Sections[current][key] = val;
+                }
+            }
+            return cfg;
+        }
+
+        private static CsvData ResolveCsvData(ExecutionContext ctx, string dataArg, out List<string> rowIds)
+        {
+            if (TryGetObject<CsvData>(ctx, dataArg, out var data))
+            {
+                rowIds = data.RowIds;
+                return data;
+            }
+
+            var ids = dataArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            foreach (var entry in ctx.ObjectStore.Values)
+            {
+                if (entry is CsvData cd && ids.Any(id => cd.Rows.ContainsKey(id)))
+                {
+                    rowIds = ids;
+                    return cd;
+                }
+            }
+            throw new ArgumentException($"csv data not found: {dataArg}");
+        }
+
+        private static Dictionary<string, string> ResolveCsvRow(ExecutionContext ctx, string rowId, out CsvData data)
+        {
+            foreach (var entry in ctx.ObjectStore.Values)
+            {
+                if (entry is CsvData cd && cd.Rows.TryGetValue(rowId, out var row))
+                {
+                    data = cd;
+                    return row;
+                }
+            }
+            throw new ArgumentException($"csv row not found: {rowId}");
+        }
+
+        private static bool TryResolveXmlNode(ExecutionContext ctx, string id, out XDocument doc, out XElement? node)
+        {
+            node = null;
+            if (TryGetObject<XDocument>(ctx, id, out var d))
+            {
+                doc = d;
+                return true;
+            }
+            if (TryGetObject<XElement>(ctx, id, out var el))
+            {
+                node = el;
+                doc = el.Document ?? new XDocument(el);
+                return true;
+            }
+            doc = new XDocument();
+            return false;
         }
 
         private static RegistryKey ResolveHive(string hive)

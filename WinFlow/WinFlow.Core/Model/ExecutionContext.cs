@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace WinFlow.Core.Model
 {
@@ -25,6 +26,12 @@ namespace WinFlow.Core.Model
         
         // CLI arguments for __ARGS__
         public string[]? CliArguments { get; set; }
+
+        // Object store for complex module data (config/csv/xml/etc.)
+        public IDictionary<string, object> ObjectStore { get; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+        // Async tasks registry
+        public IDictionary<string, Task> AsyncTasks { get; } = new Dictionary<string, Task>(StringComparer.OrdinalIgnoreCase);
         
         /// <summary>
         /// Initialize built-in variables (__FILE__, __OS__, __USER__, etc.)

@@ -1,0 +1,10 @@
+# Test async module
+async.start command="echo Async task one" var=task_one
+async.start command="echo Async task two" var=task_two
+
+async.status task=${task_one} var=STATUS_ONE
+async.wait task=${task_two} var=STATUS_TWO
+async.wait_all tasks=${task_one},${task_two}
+
+echo Task one status: ${STATUS_ONE}
+echo Task two status: ${STATUS_TWO}

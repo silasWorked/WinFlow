@@ -1,0 +1,11 @@
+# Test registry aliases module
+env.set name=REG_KEY value=Software\WinFlowTest\Sample
+
+registry.set key=${REG_KEY} value=Flag data=1
+registry.get key=${REG_KEY} value=Flag var=REG_VAL
+registry.exists key=${REG_KEY} var=REG_EXISTS
+registry.delete key=${REG_KEY} value=Flag
+registry.delete key=${REG_KEY}
+
+echo Registry value: ${REG_VAL}
+echo Registry exists: ${REG_EXISTS}

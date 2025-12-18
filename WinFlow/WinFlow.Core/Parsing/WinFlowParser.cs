@@ -110,7 +110,7 @@ namespace WinFlow.Core.Parsing
                 var lname = name.ToLowerInvariant();
 
                 // Handle two-part commands
-                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "try" or "string" or "json" or "http" or "array" or "math" or "datetime" or "path" or "log" or "regex" or "archive")
+                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "try" or "string" or "json" or "http" or "array" or "math" or "datetime" or "path" or "log" or "regex" or "archive" or "config" or "csv" or "registry" or "xml" or "async" or "input")
                 {
                     var (sub, rest2) = SplitFirstToken(rest ?? string.Empty);
                     if (!string.IsNullOrWhiteSpace(sub) && lname != "if" && lname != "include" && lname != "try")
@@ -203,6 +203,36 @@ namespace WinFlow.Core.Parsing
                     case "archive.extract":
                     case "archive.list":
                     case "archive.add":
+                    case "config.read":
+                    case "config.create":
+                    case "config.get":
+                    case "config.set":
+                    case "config.write":
+                    case "csv.read":
+                    case "csv.create":
+                    case "csv.add_row":
+                    case "csv.get_field":
+                    case "csv.write":
+                    case "csv.filter":
+                    case "csv.sort":
+                    case "registry.get":
+                    case "registry.set":
+                    case "registry.exists":
+                    case "registry.delete":
+                    case "xml.parse":
+                    case "xml.create":
+                    case "xml.add_element":
+                    case "xml.set_attribute":
+                    case "xml.get":
+                    case "xml.write":
+                    case "async.start":
+                    case "async.wait":
+                    case "async.wait_all":
+                    case "async.status":
+                    case "input.text":
+                    case "input.password":
+                    case "input.confirm":
+                    case "input.choice":
                     case "return":
                     case "isset":
                     case "if":
@@ -213,6 +243,16 @@ namespace WinFlow.Core.Parsing
                         {
                             Name = lname,
                             Args = ParseKeyValueArgs(rest)
+                        });
+                        break;
+                    case "import":
+                        step.Commands.Add(new FlowCommand
+                        {
+                            Name = lname,
+                            Args = new Dictionary<string, string>
+                            {
+                                ["path"] = Unquote(rest?.Trim() ?? string.Empty)
+                            }
                         });
                         break;
                     default:

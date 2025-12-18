@@ -1,0 +1,36 @@
+# Master interactive test runner
+# Drives module suites via prompts. Answer y/n to run each group.
+
+echo === WinFlow Interactive Test Runner ===
+
+# Note: paths are relative to the current working directory.
+# Run this script from the tests directory so includes resolve correctly.
+
+input.confirm prompt="Run core flow tests (define/call, conditionals, datetime, regex)?" default=yes var=RUN_CORE
+if condition="${RUN_CORE} == true" body="include path=test-define-call.wflow"
+if condition="${RUN_CORE} == true" body="include path=test-conditionals.wflow"
+if condition="${RUN_CORE} == true" body="include path=test-datetime.wflow"
+if condition="${RUN_CORE} == true" body="include path=test-regex.wflow"
+
+input.confirm prompt="Run filesystem/archive/path/net/process suites?" default=no var=RUN_SYS
+if condition="${RUN_SYS} == true" body="include path=test-archive.wflow"
+if condition="${RUN_SYS} == true" body="include path=test-path.wflow"
+if condition="${RUN_SYS} == true" body="include path=test-process.wflow"
+if condition="${RUN_SYS} == true" body="include path=test-net.wflow"
+
+input.confirm prompt="Run data modules (config, csv, xml, import)?" default=yes var=RUN_DATA
+if condition="${RUN_DATA} == true" body="include path=test-config.wflow"
+if condition="${RUN_DATA} == true" body="include path=test-csv.wflow"
+if condition="${RUN_DATA} == true" body="include path=test-xml.wflow"
+if condition="${RUN_DATA} == true" body="include path=test-import.wflow"
+
+input.confirm prompt="Run async tasks suite?" default=yes var=RUN_ASYNC
+if condition="${RUN_ASYNC} == true" body="include path=test-async.wflow"
+
+input.confirm prompt="Run registry suite (writes HKCU\\Software\\WinFlowTest)?" default=no var=RUN_REG
+if condition="${RUN_REG} == true" body="include path=test-registry.wflow"
+
+input.confirm prompt="Run interactive input suite (requires manual answers)?" default=no var=RUN_INPUT
+if condition="${RUN_INPUT} == true" body="include path=test-input.wflow"
+
+echo === Runner complete ===

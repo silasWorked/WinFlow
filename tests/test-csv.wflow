@@ -1,0 +1,24 @@
+# Test csv module
+file.mkdir path=tests\temp
+env.set name=CSV_FILE value=tests\temp\people.csv
+
+csv.create headers="name,city,age" var=PEOPLE
+csv.add_row data=${PEOPLE} values="Alice,London,30"
+csv.add_row data=${PEOPLE} values="Bob,Berlin,25"
+csv.add_row data=${PEOPLE} values="Cara,London,40"
+
+csv.filter data=${PEOPLE} column=name value=Alice var=ALICE_ROW
+csv.get_field row=${ALICE_ROW} field=city var=ALICE_CITY
+csv.get_field row=${ALICE_ROW} field=age var=ALICE_AGE
+
+csv.filter data=${PEOPLE} column=city value=London var=LONDON_ROWS
+csv.sort data=${LONDON_ROWS_id} column=age order=desc var=LONDON_SORTED
+
+csv.write data=${PEOPLE} file=${CSV_FILE}
+csv.read file=${CSV_FILE} has_header=true var=PEOPLE_READ
+csv.filter data=${PEOPLE_READ_id} column=city value=Berlin var=BERLIN_ROW
+csv.get_field row=${BERLIN_ROW} field=name var=BERLIN_NAME
+
+echo Alice city: ${ALICE_CITY}
+echo Alice age: ${ALICE_AGE}
+echo Berlin name from reload: ${BERLIN_NAME}

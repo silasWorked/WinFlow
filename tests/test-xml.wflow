@@ -1,0 +1,18 @@
+# Test xml module
+file.mkdir path=tests\temp
+env.set name=XML_SOURCE value=tests\temp\input.xml
+env.set name=XML_OUTPUT value=tests\temp\output.xml
+
+file.write path=${XML_SOURCE} content="<root><user><name>Alice</name><email>alice@example.com</email></user></root>"
+
+xml.parse file=${XML_SOURCE} var=XML
+xml.get data=${XML} xpath="/root/user/name" var=XML_NAME
+
+xml.add_element parent=${XML} tag=log var=LOG_NODE
+xml.set_attribute element=${LOG_NODE} name=level value=info
+xml.write data=${XML} file=${XML_OUTPUT}
+
+file.read path=${XML_OUTPUT} var=XML_WRITTEN
+
+echo Name from XML: ${XML_NAME}
+echo Written XML bytes: ${XML_WRITTEN}

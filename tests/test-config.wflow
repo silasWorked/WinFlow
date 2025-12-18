@@ -1,0 +1,22 @@
+# Test config (INI) module
+file.mkdir path=tests\temp
+env.set name=CFG_FILE value=tests\temp\config.ini
+
+config.create var=CFG
+config.set config=${CFG} section=App key=Name value=WinFlow
+config.set config=${CFG} section=App key=Mode value=dev
+config.set config=${CFG} section=Paths key=Data value=data\files
+
+config.get config=${CFG} section=App key=Name var=APP_NAME
+config.get config=${CFG} section=App key=Missing default=none var=MISSING
+
+config.write config=${CFG} file=${CFG_FILE}
+config.read file=${CFG_FILE} var=CFG_LOADED
+
+config.get config=${CFG_LOADED} section=App key=Mode var=APP_MODE
+config.get config=${CFG_LOADED} section=Paths key=Data var=DATA_PATH
+
+echo Config name: ${APP_NAME}
+echo Missing default: ${MISSING}
+echo Mode after reload: ${APP_MODE}
+echo Data path: ${DATA_PATH}

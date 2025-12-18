@@ -1,0 +1,10 @@
+# Test input module (interactive)
+input.text prompt="Enter your name: " default=Guest var=NAME
+input.password prompt="Enter secret: " var=SECRET
+input.confirm prompt="Proceed with action?" default=yes var=CONFIRM
+input.choice prompt="Pick a color" options="red,green,blue" var=COLOR
+
+echo Name: ${NAME}
+echo Secret: ${SECRET}
+echo Confirm: ${CONFIRM}
+echo Color: ${COLOR}

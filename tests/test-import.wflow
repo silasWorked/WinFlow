@@ -1,0 +1,7 @@
+# Test import module
+
+import path=tests\import-lib.wflow
+isset var=LIB_TOP result=LIB_TOP_PRESENT
+call name=lib.greet arg0=World
+call name=lib.tag arg0=42
+echo LIB_TOP present? ${LIB_TOP_PRESENT}
