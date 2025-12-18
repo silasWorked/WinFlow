@@ -1,0 +1,3 @@
+// Test try-catch error handling
+try body="file.read path=nonexistent.txt var=CONTENT" catch="echo Error caught: ${_error}"
+echo message="Continue after error"

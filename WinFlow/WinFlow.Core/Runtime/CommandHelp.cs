@@ -58,6 +58,12 @@ namespace WinFlow.Core.Runtime
             
             ["if"] = "if - Conditional execution\nUsage: if condition=\"<expr>\" body=\"<command>\" [else=\"<command>\"]\nOperators: ==, !=, >, <, exists\nExample: if condition=\"${VAR} == value\" body=\"echo matched\"",
             
+            ["try"] = "try - Error handling with try-catch\nUsage: try body=\"<command>\" [catch=\"<command>\"]\nError message stored in ${_error}\nExample: try body=\"file.read path=nonexist.txt\" catch=\"echo Error: ${_error}\"",
+            
+            ["define"] = "define - Define a reusable function\nUsage: define name=<FUNC_NAME> body=\"<commands>\"\nParameters: Use ${0}, ${1}, etc. for arguments\nExample: define name=greet body=\"echo Hello ${0}\"",
+            
+            ["call"] = "call - Call a previously defined function\nUsage: call name=<FUNC_NAME> [args as additional params]\nExample: call name=greet World",
+            
             ["include"] = "include - Include commands from another script\nUsage: include path=\"<script.wflow>\"\nExample: include path=\"common.wflow\"",
         };
 

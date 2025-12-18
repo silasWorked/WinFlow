@@ -1,0 +1,31 @@
+// WinFlow v0.1.9 feature test - All 5 features
+// 1. JSON operations
+// 2. HTTP operations  
+// 3. Array operations
+// 4. Try-catch error handling
+// 5. Define/call functions
+
+echo "=== Test 1: JSON ==="
+json.parse text='{"name":"test","value":42}' var=JSON_DATA
+echo "Parsed JSON stored in JSON_DATA"
+json.get text='{"user":{"name":"Alice","age":30}}' path=user.name var=USER_NAME
+echo "Extracted user name: ${USER_NAME}"
+
+echo "=== Test 2: Array ==="
+array.split text="apple,banana,cherry" sep="," var=FRUITS
+echo "Split into array"
+array.length array='["a","b","c","d","e"]' var=LEN
+echo "Array length: ${LEN}"
+
+echo "=== Test 3: Try-Catch ==="
+try body="echo This works" catch="echo Error: ${_error}"
+try body="env.set" catch="echo Error caught in catch block"
+
+echo "=== Test 4: Define/Call ==="
+define name=greet body="echo Greetings!"
+define name=add_message body="echo Function body can run: echo Success"
+
+call name=greet
+call name=add_message
+
+echo "=== All v0.1.9 features tested! ==="

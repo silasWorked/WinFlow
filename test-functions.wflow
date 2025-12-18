@@ -1,0 +1,4 @@
+// Test define and call
+define name=greet body="echo Hello ${0}!"
+
+call name=greet arg0=WinFlow

@@ -672,6 +672,65 @@ namespace WinFlow.Core.Runtime
                 var exec = new TaskExecutor();
                 exec.Run(tasks, ctx);
             });
+
+            // Try module (error handling)
+            Register("try", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("body", out var body))
+                    throw new ArgumentException("try requires body=<command>");
+                cmd.Args.TryGetValue("catch", out var catchBody);
+                
+                try
+                {
+                    RunInline(body!, ctx);
+                }
+                catch (Exception ex)
+                {
+                    if (!string.IsNullOrWhiteSpace(catchBody))
+                    {
+                        ctx.Environment["_error"] = ex.Message;
+                        RunInline(catchBody!, ctx);
+                    }
+                    else
+                    {
+                        ctx.LogWarning?.Invoke($"Error caught: {ex.Message}");
+                    }
+                }
+            });
+
+            Register("define", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("name", out var name))
+                    throw new ArgumentException("define requires name=<function_name>");
+                if (!cmd.Args.TryGetValue("body", out var body))
+                    throw new ArgumentException("define requires body=<commands>");
+                
+                ctx.Functions[name!] = body!;
+                ctx.Log($"Function '{name}' defined");
+            });
+
+            Register("call", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("name", out var name))
+                    throw new ArgumentException("call requires name=<function_name>");
+                
+                if (!ctx.Functions.TryGetValue(name!, out var body))
+                    throw new InvalidOperationException($"Function '{name}' not defined");
+                
+                // Replace ${0}, ${1}, etc. with arg0=, arg1=, etc.
+                var funcBody = body;
+                for (int i = 0; i < 10; i++)
+                {
+                    var argKey = $"arg{i}";
+                    if (cmd.Args.TryGetValue(argKey, out var argValue))
+                    {
+                        var expandedValue = Expand(argValue, ctx);
+                        funcBody = funcBody.Replace($"${{{i}}}", expandedValue, StringComparison.Ordinal);
+                    }
+                }
+                
+                RunInline(funcBody, ctx);
+            });
         }
 
         private static bool IsTrue(string value)
@@ -696,7 +755,7 @@ namespace WinFlow.Core.Runtime
             }
 
             // binary operators
-            string left, right, op;
+            string left, right;
             if (condition.Contains(" == "))
             {
                 var parts = condition.Split(new[] { " == " }, 2, StringSplitOptions.None);

@@ -29,10 +29,10 @@ namespace WinFlow.Core.Parsing
                 var lname = name.ToLowerInvariant();
 
                 // handle two-part commands like "env set" => command name becomes "env.set"
-                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "string" or "json" or "http" or "array")
+                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "try" or "string" or "json" or "http" or "array")
                 {
                     var (sub, rest2) = SplitFirstToken(rest ?? string.Empty);
-                    if (!string.IsNullOrWhiteSpace(sub) && lname != "if" && lname != "include")
+                    if (!string.IsNullOrWhiteSpace(sub) && lname != "if" && lname != "include" && lname != "try")
                     {
                         lname = lname + "." + sub.ToLowerInvariant();
                         rest = rest2;
@@ -90,6 +90,9 @@ namespace WinFlow.Core.Parsing
                     case "array.join":
                     case "array.length":
                     case "if":
+                    case "try":
+                    case "define":
+                    case "call":
                     case "include":
                         step.Commands.Add(new FlowCommand
                         {
