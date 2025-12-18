@@ -9,6 +9,17 @@ nav_order: 4
 
 ## Основные команды
 
+### Интерактивный шелл
+
+```text
+winflow
+winflow shell
+```
+
+- Откроет отдельное окно «WinFlow Shell» с приглашением `winflow>`
+- Поддерживаются встроенные команды: `help`, `exit`, `clear`, `pwd`, `cd <path>`, `verbose on|off`, `dry on|off`, `info`, `list`, `run <file.wflow>`
+- Можно исполнять одиночные команды языка, например: `echo message="Hi"`, `file write path=out.txt content=...`
+
 ### Запуск скрипта
 
 ```text

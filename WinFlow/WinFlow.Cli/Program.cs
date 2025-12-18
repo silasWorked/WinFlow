@@ -14,11 +14,20 @@ namespace WinFlow.Cli
 
         private static int Main(string[] args)
         {
-            // Handle no arguments
+            // Handle no arguments -> open a separate shell window
             if (args.Length == 0)
             {
-                PrintUsage();
-                return 0;
+                try
+                {
+                    LaunchShellWindow();
+                    return 0;
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Failed to open shell: {ex.Message}");
+                    PrintUsage();
+                    return 1;
+                }
             }
 
             // Handle version command
@@ -33,6 +42,21 @@ namespace WinFlow.Cli
             {
                 PrintUsage();
                 return 0;
+            }
+
+            // Handle shell command (explicit)
+            if (HasArg(args, "shell"))
+            {
+                try
+                {
+                    LaunchShellWindow();
+                    return 0;
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Failed to open shell: {ex.Message}");
+                    return 1;
+                }
             }
 
             // Handle info command
@@ -124,6 +148,8 @@ namespace WinFlow.Cli
             Console.WriteLine("WinFlow CLI v" + Version);
             Console.WriteLine();
             Console.WriteLine("Usage:");
+            Console.WriteLine("  winflow                         Open WinFlow shell (new window)");
+            Console.WriteLine("  winflow shell                   Open WinFlow shell (new window)");
             Console.WriteLine("  winflow <script.wflow> [OPTIONS]  Run a WinFlow script");
             Console.WriteLine("  winflow --version                 Show version");
             Console.WriteLine("  winflow --help                    Show this help message");
@@ -135,9 +161,59 @@ namespace WinFlow.Cli
             Console.WriteLine("  --verbose, -v Show detailed execution logs");
             Console.WriteLine();
             Console.WriteLine("Examples:");
+            Console.WriteLine("  winflow            # opens new console window");
+            Console.WriteLine("  winflow shell      # same as above");
             Console.WriteLine("  winflow demo.wflow");
             Console.WriteLine("  winflow script.wflow --verbose");
             Console.WriteLine("  winflow setup.wflow --dry-run");
+        }
+
+        private static void LaunchShellWindow()
+        {
+            // Try to locate the ShellHost executable
+            var shellExe = FindShellHostExecutable();
+            if (shellExe == null)
+                throw new FileNotFoundException("WinFlow.ShellHost executable not found.");
+
+            // Launch ShellHost in a new console window via 'start'
+            var args = $"/c start \"WinFlow Shell\" \"{shellExe}\"";
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = args,
+                UseShellExecute = true,
+                CreateNoWindow = false,
+                WindowStyle = System.Diagnostics.ProcessWindowStyle.Normal,
+                WorkingDirectory = Environment.CurrentDirectory
+            };
+            System.Diagnostics.Process.Start(psi);
+        }
+
+        private static string? FindShellHostExecutable()
+        {
+            // 1. Same directory as CLI (published/installed scenario)
+            var baseDir = AppContext.BaseDirectory;
+            var candidate1 = Path.Combine(baseDir, "WinFlow.ShellHost.exe");
+            if (File.Exists(candidate1)) return Path.GetFullPath(candidate1);
+
+            // 2. Development layout: ..\\..\\.. from net8.0 folder to project root
+            try
+            {
+                var dir = new DirectoryInfo(baseDir);
+                // net8.0 -> Debug/Release -> bin -> WinFlow.Cli -> WinFlow (solution folder)
+                for (int i = 0; i < 4 && dir.Parent != null; i++) dir = dir.Parent!;
+                var root = dir.FullName; // likely ...\\WinFlow
+                var debug = Path.Combine(root, "WinFlow.ShellHost", "bin", "Debug", "net8.0", "WinFlow.ShellHost.exe");
+                var release = Path.Combine(root, "WinFlow.ShellHost", "bin", "Release", "net8.0", "WinFlow.ShellHost.exe");
+                if (File.Exists(debug)) return Path.GetFullPath(debug);
+                if (File.Exists(release)) return Path.GetFullPath(release);
+            }
+            catch
+            {
+                // ignore
+            }
+
+            return null;
         }
 
         private static void PrintInfo()
