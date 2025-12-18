@@ -41,8 +41,49 @@ namespace WinFlow.Core.Parsing
                 if (line.Length == 0) continue;
                 if (line.StartsWith("#") || line.StartsWith("//")) continue;
 
+                // Check for special syntax: env set var=funcname(args)
+                if (line.StartsWith("env set ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var afterEnvSet = line.Substring(8).Trim();
+                    if (afterEnvSet.Contains("=") && afterEnvSet.Contains("(") && afterEnvSet.EndsWith(")"))
+                    {
+                        var eqIdx = afterEnvSet.IndexOf('=');
+                        var varName = afterEnvSet.Substring(0, eqIdx).Trim();
+                        var funcCallStr = afterEnvSet.Substring(eqIdx + 1).Trim();
+                        
+                        if (funcCallStr.Contains("(") && funcCallStr.EndsWith(")"))
+                        {
+                            var parenIdx = funcCallStr.IndexOf('(');
+                            var funcName = funcCallStr.Substring(0, parenIdx).Trim();
+                            var argStr = funcCallStr.Substring(parenIdx + 1, funcCallStr.Length - parenIdx - 2).Trim();
+                            
+                            // Create function call command
+                            var callCmd = new FlowCommand { Name = "call" };
+                            callCmd.Args["name"] = funcName;
+                            
+                            if (!string.IsNullOrWhiteSpace(argStr))
+                            {
+                                var args = ParseFunctionCallArgs(argStr);
+                                for (int j = 0; j < args.Count; j++)
+                                {
+                                    callCmd.Args[$"arg{j}"] = args[j];
+                                }
+                            }
+                            step.Commands.Add(callCmd);
+                            
+                            // Create env.set command to capture return value
+                            var envSetCmd = new FlowCommand { Name = "env.set" };
+                            envSetCmd.Args["name"] = varName;
+                            envSetCmd.Args["value"] = "${__RETURN__}";
+                            step.Commands.Add(envSetCmd);
+                            
+                            continue;
+                        }
+                    }
+                }
+                
                 // Check if this is a function call: funcname(args...)
-                if (line.Contains("(") && line.EndsWith(")"))
+                if (line.Contains("(") && line.EndsWith(")") && !line.Contains("="))
                 {
                     var parenIdx = line.IndexOf('(');
                     var funcName = line.Substring(0, parenIdx).Trim();
@@ -69,7 +110,7 @@ namespace WinFlow.Core.Parsing
                 var lname = name.ToLowerInvariant();
 
                 // Handle two-part commands
-                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "try" or "string" or "json" or "http" or "array")
+                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "try" or "string" or "json" or "http" or "array" or "math")
                 {
                     var (sub, rest2) = SplitFirstToken(rest ?? string.Empty);
                     if (!string.IsNullOrWhiteSpace(sub) && lname != "if" && lname != "include" && lname != "try")
@@ -121,6 +162,8 @@ namespace WinFlow.Core.Parsing
                     case "string.upper":
                     case "string.lower":
                     case "string.trim":
+                    case "string.concat":
+                    case "string.format":
                     case "json.parse":
                     case "json.get":
                     case "http.get":
@@ -129,6 +172,14 @@ namespace WinFlow.Core.Parsing
                     case "array.split":
                     case "array.join":
                     case "array.length":
+                    case "math.add":
+                    case "math.subtract":
+                    case "math.multiply":
+                    case "math.divide":
+                    case "math.round":
+                    case "math.floor":
+                    case "math.ceil":
+                    case "return":
                     case "if":
                     case "try":
                     case "include":

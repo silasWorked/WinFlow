@@ -1,0 +1,21 @@
+#/// Test: Built-in Variables
+
+echo ===== Built-in Variables Test =====
+
+// File информация
+echo Script file: ${__FILE__}
+echo File name: ${__FILE_NAME__}
+echo File directory: ${__FILE_DIR__}
+
+// System информация
+echo Operating System: ${__OS__}
+echo User: ${__USER__}
+echo Machine: ${__MACHINE__}
+echo Domain: ${__DOMAIN__}
+echo Temp directory: ${__TEMP__}
+echo Processor count: ${__PROCESSOR_COUNT__}
+
+// CLI аргументы
+echo Arguments: ${__ARGS__}
+
+echo ===== Test Complete =====

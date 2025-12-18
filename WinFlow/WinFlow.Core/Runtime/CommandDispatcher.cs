@@ -768,6 +768,176 @@ namespace WinFlow.Core.Runtime
                         ctx.Environment[kvp.Key] = kvp.Value;
                     }
                 }
+                
+                // Propagate return value
+                if (funcContext.ReturnValue != null)
+                {
+                    ctx.ReturnValue = funcContext.ReturnValue;
+                    ctx.Environment["__RETURN__"] = funcContext.ReturnValue;
+                }
+            });
+
+            // Return statement
+            Register("return", (cmd, ctx) =>
+            {
+                if (cmd.Args.TryGetValue("value", out var value))
+                {
+                    ctx.ReturnValue = Expand(value, ctx);
+                }
+                else if (cmd.Args.Count > 0)
+                {
+                    // return ${variable} or return literal
+                    var firstArg = cmd.Args.First().Value;
+                    ctx.ReturnValue = Expand(firstArg, ctx);
+                }
+                else
+                {
+                    ctx.ReturnValue = string.Empty;
+                }
+                
+                ctx.Log($"return {ctx.ReturnValue}");
+            });
+
+            // Math operations
+            Register("math.add", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("a", out var aStr) || !cmd.Args.TryGetValue("b", out var bStr))
+                    throw new ArgumentException("math.add requires a=<num> b=<num>");
+                
+                if (!double.TryParse(aStr, out var a) || !double.TryParse(bStr, out var b))
+                    throw new ArgumentException("math.add requires numeric arguments");
+                
+                var result = a + b;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "MATH_RESULT";
+                ctx.Environment[varName] = result.ToString();
+                ctx.Log($"math.add {a} + {b} = {result}");
+            });
+
+            Register("math.subtract", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("a", out var aStr) || !cmd.Args.TryGetValue("b", out var bStr))
+                    throw new ArgumentException("math.subtract requires a=<num> b=<num>");
+                
+                if (!double.TryParse(aStr, out var a) || !double.TryParse(bStr, out var b))
+                    throw new ArgumentException("math.subtract requires numeric arguments");
+                
+                var result = a - b;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "MATH_RESULT";
+                ctx.Environment[varName] = result.ToString();
+                ctx.Log($"math.subtract {a} - {b} = {result}");
+            });
+
+            Register("math.multiply", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("a", out var aStr) || !cmd.Args.TryGetValue("b", out var bStr))
+                    throw new ArgumentException("math.multiply requires a=<num> b=<num>");
+                
+                if (!double.TryParse(aStr, out var a) || !double.TryParse(bStr, out var b))
+                    throw new ArgumentException("math.multiply requires numeric arguments");
+                
+                var result = a * b;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "MATH_RESULT";
+                ctx.Environment[varName] = result.ToString();
+                ctx.Log($"math.multiply {a} * {b} = {result}");
+            });
+
+            Register("math.divide", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("a", out var aStr) || !cmd.Args.TryGetValue("b", out var bStr))
+                    throw new ArgumentException("math.divide requires a=<num> b=<num>");
+                
+                if (!double.TryParse(aStr, out var a) || !double.TryParse(bStr, out var b))
+                    throw new ArgumentException("math.divide requires numeric arguments");
+                
+                if (Math.Abs(b) < 0.000001)
+                    throw new DivideByZeroException("Cannot divide by zero");
+                
+                var result = a / b;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "MATH_RESULT";
+                ctx.Environment[varName] = result.ToString();
+                ctx.Log($"math.divide {a} / {b} = {result}");
+            });
+
+            Register("math.round", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("value", out var valueStr))
+                    throw new ArgumentException("math.round requires value=<num>");
+                
+                if (!double.TryParse(valueStr, out var value))
+                    throw new ArgumentException("math.round requires numeric value");
+                
+                var decimals = 0;
+                if (cmd.Args.TryGetValue("decimals", out var decStr))
+                    int.TryParse(decStr, out decimals);
+                
+                var result = Math.Round(value, decimals);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "MATH_RESULT";
+                ctx.Environment[varName] = result.ToString();
+                ctx.Log($"math.round {value} (decimals={decimals}) = {result}");
+            });
+
+            Register("math.floor", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("value", out var valueStr))
+                    throw new ArgumentException("math.floor requires value=<num>");
+                
+                if (!double.TryParse(valueStr, out var value))
+                    throw new ArgumentException("math.floor requires numeric value");
+                
+                var result = Math.Floor(value);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "MATH_RESULT";
+                ctx.Environment[varName] = result.ToString();
+                ctx.Log($"math.floor {value} = {result}");
+            });
+
+            Register("math.ceil", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("value", out var valueStr))
+                    throw new ArgumentException("math.ceil requires value=<num>");
+                
+                if (!double.TryParse(valueStr, out var value))
+                    throw new ArgumentException("math.ceil requires numeric value");
+                
+                var result = Math.Ceiling(value);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "MATH_RESULT";
+                ctx.Environment[varName] = result.ToString();
+                ctx.Log($"math.ceil {value} = {result}");
+            });
+
+            // String operations
+            Register("string.concat", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("left", out var left))
+                    left = string.Empty;
+                if (!cmd.Args.TryGetValue("right", out var right))
+                    right = string.Empty;
+                
+                var separator = cmd.Args.TryGetValue("sep", out var sep) ? sep : "";
+                var result = left + separator + right;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "STRING_RESULT";
+                ctx.Environment[varName] = result;
+                ctx.Log($"string.concat '{left}' + '{right}' = '{result}'");
+            });
+
+            Register("string.format", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("template", out var template))
+                    throw new ArgumentException("string.format requires template=<string>");
+                
+                // Simple placeholder replacement: {0}, {1}, {2}, etc.
+                var result = template;
+                for (int i = 0; i < 10; i++)
+                {
+                    var placeholder = "{" + i + "}";
+                    if (cmd.Args.TryGetValue(i.ToString(), out var value))
+                    {
+                        result = result.Replace(placeholder, value);
+                    }
+                }
+                
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "STRING_RESULT";
+                ctx.Environment[varName] = result;
+                ctx.Log($"string.format result = '{result}'");
             });
         }
 

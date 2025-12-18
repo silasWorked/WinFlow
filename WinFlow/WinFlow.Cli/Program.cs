@@ -14,7 +14,7 @@ namespace WinFlow.Cli
 {
     internal static class Program
     {
-        private const string Version = "0.2.0";
+        private const string Version = "0.2.1";
 
         private static int Main(string[] args)
         {
@@ -160,6 +160,9 @@ namespace WinFlow.Cli
                 DryRun = HasArg(args, "--dry-run"),
                 Verbose = HasArg(args, "--verbose") || HasArg(args, "-v"),
                 WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? Environment.CurrentDirectory,
+                CurrentFile = Path.GetFullPath(filePath),
+                CurrentLine = 1,
+                CliArguments = args.Where(a => !a.StartsWith("-") && a != filePath).ToArray(),
                 Log = s => Console.WriteLine(s),
                 LogError = s => 
                 {
@@ -174,6 +177,9 @@ namespace WinFlow.Cli
                     Console.ResetColor();
                 }
             };
+            
+            // Initialize built-in variables (__FILE__, __OS__, __USER__, etc.)
+            context.InitializeBuiltInVariables();
 
             // Handle --log-file argument
             var logFile = GetArgValue(args, "--log-file");

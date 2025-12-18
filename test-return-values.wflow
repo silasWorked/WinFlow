@@ -1,0 +1,65 @@
+#/// Test: Return Values and Math Operations
+
+echo ===== Return Values Test =====
+
+// Define функция с return
+define square(x):
+    math.multiply a="${x}" b="${x}" var="result"
+    return value="${result}"
+
+// Вызов и присвоение результата
+env set value=square(5)
+echo Square of 5: ${value}
+
+env set value=square(10)
+echo Square of 10: ${value}
+
+// Математические операции
+echo ===== Math Operations =====
+
+math.add a=10 b=20 var="sum"
+echo 10 + 20 = ${sum}
+
+math.subtract a=50 b=15 var="diff"
+echo 50 - 15 = ${diff}
+
+math.multiply a=7 b=8 var="product"
+echo 7 * 8 = ${product}
+
+math.divide a=100 b=4 var="quotient"
+echo 100 / 4 = ${quotient}
+
+math.divide a=10 b=3 var="division"
+math.round value="${division}" decimals=2 var="rounded"
+echo 10 / 3 (rounded to 2 decimals) = ${rounded}
+
+// String concatenation
+echo ===== String Operations =====
+
+string.concat left="Hello" right=" World" var="greeting"
+echo Concatenation: ${greeting}
+
+string.concat left="Result: " right="${sum}" var="message"
+echo ${message}
+
+// Комплексная функция
+echo ===== Complex Function Test =====
+
+define format_file_size(bytes):
+    // Check if less than 1KB
+    math.divide a="${bytes}" b=1024 var="kb"
+    math.round value="${kb}" decimals=2 var="kb_rounded"
+    
+    string.concat left="${kb_rounded}" right=" KB" var="result"
+    return value="${result}"
+
+env set size=format_file_size(1536000)
+echo File size: ${size}
+
+env set size=format_file_size(512)
+echo File size: ${size}
+
+env set size=format_file_size(2048000)
+echo File size: ${size}
+
+echo ===== Test Complete =====
