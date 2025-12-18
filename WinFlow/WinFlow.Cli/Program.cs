@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
 using WinFlow.Core.Model;
 using ExecutionContext = WinFlow.Core.Model.ExecutionContext;
 using WinFlow.Core.Parsing;
@@ -10,7 +14,7 @@ namespace WinFlow.Cli
 {
     internal static class Program
     {
-        private const string Version = "0.1.2";
+        private const string Version = "0.1.4";
 
         private static int Main(string[] args)
         {
@@ -42,6 +46,16 @@ namespace WinFlow.Cli
             {
                 PrintUsage();
                 return 0;
+            }
+
+            // Handle update commands
+            if (HasArg(args, "check-update") || HasArg(args, "--check-update"))
+            {
+                return CheckUpdate().GetAwaiter().GetResult();
+            }
+            if (HasArg(args, "update") || HasArg(args, "self-update") || HasArg(args, "upgrade"))
+            {
+                return PerformUpdate().GetAwaiter().GetResult();
             }
 
             // Handle shell command (explicit)
@@ -155,6 +169,8 @@ namespace WinFlow.Cli
             Console.WriteLine("  winflow --help                    Show this help message");
             Console.WriteLine("  winflow info                      Show system information");
             Console.WriteLine("  winflow list                      List available commands");
+            Console.WriteLine("  winflow check-update              Check for a newer version");
+            Console.WriteLine("  winflow update                    Download and install the latest version");
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine("  --dry-run     Simulate execution without making changes");
@@ -166,6 +182,8 @@ namespace WinFlow.Cli
             Console.WriteLine("  winflow demo.wflow");
             Console.WriteLine("  winflow script.wflow --verbose");
             Console.WriteLine("  winflow setup.wflow --dry-run");
+            Console.WriteLine("  winflow check-update");
+            Console.WriteLine("  winflow update");
         }
 
         private static void LaunchShellWindow()
@@ -228,6 +246,182 @@ namespace WinFlow.Cli
             Console.WriteLine($"User:          {Environment.UserName}");
             Console.WriteLine();
         }
+
+        // --- Self-update ---
+        private static async Task<int> CheckUpdate()
+        {
+            try
+            {
+                var latest = await GetLatestReleaseAsync();
+                if (latest == null)
+                {
+                    Console.WriteLine("No release info available.");
+                    return 0;
+                }
+                var currentV = ParseVersion(Version);
+                var latestV = ParseVersion(latest.Tag);
+                if (latestV == null || currentV == null)
+                {
+                    Console.WriteLine($"Current: {Version}, Latest tag: {latest.Tag}");
+                    return 0;
+                }
+                if (CompareVersions(latestV, currentV) > 0)
+                {
+                    Console.WriteLine($"Update available: {currentV} -> {latestV}");
+                    Console.WriteLine($"Asset: {latest.AssetName}");
+                }
+                else
+                {
+                    Console.WriteLine($"You are up to date ({currentV}). Latest: {latestV}");
+                }
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"check-update failed: {ex.Message}");
+                return 1;
+            }
+        }
+
+        private static async Task<int> PerformUpdate()
+        {
+            try
+            {
+                var latest = await GetLatestReleaseAsync();
+                if (latest == null)
+                {
+                    Console.Error.WriteLine("Could not fetch latest release.");
+                    return 1;
+                }
+
+                var currentV = ParseVersion(Version);
+                var latestV = ParseVersion(latest.Tag);
+                if (latestV != null && currentV != null && CompareVersions(latestV, currentV) <= 0)
+                {
+                    Console.WriteLine("Already up to date.");
+                    return 0;
+                }
+
+                if (string.IsNullOrWhiteSpace(latest.DownloadUrl))
+                {
+                    Console.Error.WriteLine("No downloadable asset found in the latest release.");
+                    return 1;
+                }
+
+                var tempZip = Path.Combine(Path.GetTempPath(), $"winflow-update-{Guid.NewGuid():N}.zip");
+                var tempDir = Path.Combine(Path.GetTempPath(), $"winflow-update-{Guid.NewGuid():N}");
+
+                Console.WriteLine($"Downloading: {latest.AssetName}");
+                using (var http = CreateHttpClient())
+                {
+                    var data = await http.GetByteArrayAsync(latest.DownloadUrl);
+                    await File.WriteAllBytesAsync(tempZip, data);
+                }
+
+                Directory.CreateDirectory(tempDir);
+                ZipFile.ExtractToDirectory(tempZip, tempDir, overwriteFiles: true);
+
+                // Find installer inside extracted package
+                var installerPath = Path.Combine(tempDir, "WinFlow.Installer.Cli.exe");
+                if (!File.Exists(installerPath))
+                {
+                    // fallback: search recursively
+                    var found = Directory.GetFiles(tempDir, "WinFlow.Installer.Cli.exe", SearchOption.AllDirectories);
+                    if (found.Length > 0) installerPath = found[0];
+                }
+                if (!File.Exists(installerPath))
+                {
+                    Console.Error.WriteLine("Installer not found in the downloaded package.");
+                    return 1;
+                }
+
+                var installDir = GetDefaultInstallDir();
+                Console.WriteLine($"Starting installer to update: {installDir}");
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = installerPath,
+                    Arguments = $"--dir \"{installDir}\"",
+                    UseShellExecute = true,
+                    WorkingDirectory = Path.GetDirectoryName(installerPath) ?? tempDir,
+                    WindowStyle = System.Diagnostics.ProcessWindowStyle.Normal
+                };
+                System.Diagnostics.Process.Start(psi);
+
+                Console.WriteLine("Updater started. This process will exit now to allow file replacement.");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"update failed: {ex.Message}");
+                return 1;
+            }
+        }
+
+        private static string GetDefaultInstallDir()
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinFlow");
+            return dir;
+        }
+
+        private static HttpClient CreateHttpClient()
+        {
+            var http = new HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("WinFlowCLI/" + Version);
+            http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+            return http;
+        }
+
+        private static global::System.Version? ParseVersion(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            s = s.Trim();
+            if (s.StartsWith("v", StringComparison.OrdinalIgnoreCase)) s = s.Substring(1);
+            if (global::System.Version.TryParse(s, out var v)) return v;
+            return null;
+        }
+
+        private static int CompareVersions(global::System.Version a, global::System.Version b)
+        {
+            return a.CompareTo(b);
+        }
+
+        private sealed class ReleaseInfo
+        {
+            public string Tag { get; set; } = "";
+            public string AssetName { get; set; } = "";
+            public string DownloadUrl { get; set; } = "";
+        }
+
+        private static async Task<ReleaseInfo?> GetLatestReleaseAsync()
+        {
+            var api = "https://api.github.com/repos/silasWorked/WinFlow/releases/latest";
+            using var http = CreateHttpClient();
+            using var resp = await http.GetAsync(api);
+            resp.EnsureSuccessStatusCode();
+            using var stream = await resp.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+            var root = doc.RootElement;
+            var tag = root.GetProperty("tag_name").GetString() ?? "";
+            string assetName = "";
+            string downloadUrl = "";
+            if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var a in assets.EnumerateArray())
+                {
+                    var name = a.GetProperty("name").GetString() ?? "";
+                    var url = a.GetProperty("browser_download_url").GetString() ?? "";
+                    if (name.Equals("winflow-win-x64.zip", StringComparison.OrdinalIgnoreCase))
+                    {
+                        assetName = name;
+                        downloadUrl = url;
+                        break;
+                    }
+                }
+            }
+            return new ReleaseInfo { Tag = tag, AssetName = assetName, DownloadUrl = downloadUrl };
+        }
+        // --- end self-update ---
 
         private static void PrintAvailableCommands()
         {

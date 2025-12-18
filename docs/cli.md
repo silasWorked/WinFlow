@@ -20,6 +20,16 @@ winflow shell
 - Поддерживаются встроенные команды: `help`, `exit`, `clear`, `pwd`, `cd <path>`, `verbose on|off`, `dry on|off`, `info`, `list`, `run <file.wflow>`
 - Можно исполнять одиночные команды языка, например: `echo message="Hi"`, `file write path=out.txt content=...`
 
+### Обновление
+
+```text
+winflow check-update    # Проверка новой версии
+winflow update          # Скачать и установить последнюю версию
+```
+
+- При `update` скачивается официальный архив релиза, распаковывается во временную папку и запускается `WinFlow.Installer.Cli.exe` для обновления каталога установки.
+- Текущий процесс `winflow` завершится, чтобы файлы могли быть заменены.
+
 ### Запуск скрипта
 
 ```text
@@ -71,6 +81,13 @@ winflow info
 # Доступные встроенные команды
 winflow list
 # Core, Environment, File, Process команды с описанием
+
+### Обновление
+
+```powershell
+winflow check-update
+winflow update
+```
 ```
 
 ## Коды возврата
