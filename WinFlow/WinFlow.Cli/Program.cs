@@ -14,7 +14,7 @@ namespace WinFlow.Cli
 {
     internal static class Program
     {
-        private const string Version = "0.1.5";
+        private const string Version = "0.1.6";
 
         private static int Main(string[] args)
         {
@@ -107,8 +107,33 @@ namespace WinFlow.Cli
                 DryRun = HasArg(args, "--dry-run"),
                 Verbose = HasArg(args, "--verbose") || HasArg(args, "-v"),
                 WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? Environment.CurrentDirectory,
-                Log = s => Console.WriteLine(s)
+                Log = s => Console.WriteLine(s),
+                LogError = s => 
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Error.WriteLine(s);
+                    Console.ResetColor();
+                },
+                LogWarning = s =>
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine(s);
+                    Console.ResetColor();
+                }
             };
+
+            // Handle --log-file argument
+            var logFile = GetArgValue(args, "--log-file");
+            if (!string.IsNullOrWhiteSpace(logFile))
+            {
+                context.LogFile = logFile;
+                var originalLog = context.Log;
+                context.Log = s =>
+                {
+                    originalLog(s);
+                    try { System.IO.File.AppendAllText(logFile, s + Environment.NewLine); } catch { }
+                };
+            }
 
             if (context.Verbose)
             {
@@ -144,6 +169,16 @@ namespace WinFlow.Cli
             return false;
         }
 
+        private static string? GetArgValue(IReadOnlyList<string> args, string name)
+        {
+            for (int i = 0; i < args.Count - 1; i++)
+            {
+                if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
+                    return args[i + 1];
+            }
+            return null;
+        }
+
         private static string? GetScriptPath(IReadOnlyList<string> args)
         {
             foreach (var a in args)
@@ -173,6 +208,10 @@ namespace WinFlow.Cli
             Console.WriteLine("  winflow update                    Download and install the latest version");
             Console.WriteLine();
             Console.WriteLine("Options:");
+            Console.WriteLine("  --dry-run          Simulate without executing");
+            Console.WriteLine("  --verbose, -v      Enable verbose output");
+            Console.WriteLine("  --log-file <path>  Write output to log file");
+            Console.WriteLine();
             Console.WriteLine("  --dry-run     Simulate execution without making changes");
             Console.WriteLine("  --verbose, -v Show detailed execution logs");
             Console.WriteLine();

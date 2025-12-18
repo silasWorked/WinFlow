@@ -200,6 +200,41 @@ namespace WinFlow.Core.Runtime
                 ctx.Log($"copied {src} -> {dst}");
             });
 
+            Register("file.move", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("src", out var src))
+                    throw new ArgumentException("file.move requires src=<file>");
+                if (!cmd.Args.TryGetValue("dst", out var dst) && !cmd.Args.TryGetValue("dest", out dst))
+                    throw new ArgumentException("file.move requires dst=<file>");
+                var sfull = System.IO.Path.IsPathRooted(src)
+                    ? src
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, src);
+                var dfull = System.IO.Path.IsPathRooted(dst)
+                    ? dst
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, dst);
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(dfull)!);
+                var overwrite = cmd.Args.TryGetValue("overwrite", out var o) && IsTrue(o);
+                if (overwrite && System.IO.File.Exists(dfull))
+                    System.IO.File.Delete(dfull);
+                System.IO.File.Move(sfull, dfull);
+                ctx.Log($"moved {src} -> {dst}");
+            });
+
+            Register("file.exists", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("file.exists requires path=<file|dir>");
+                var full = System.IO.Path.IsPathRooted(path)
+                    ? path
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, path);
+                var exists = System.IO.File.Exists(full) || System.IO.Directory.Exists(full);
+                var result = exists ? "true" : "false";
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = result;
+                else
+                    ctx.Log(result);
+            });
+
             // Process module
             Register("process.run", (cmd, ctx) =>
             {
@@ -364,11 +399,99 @@ namespace WinFlow.Core.Runtime
                     idx++;
                 }
             });
+
+            // Conditional module
+            Register("if", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("condition", out var condition))
+                    throw new ArgumentException("if requires condition=<expr>");
+                cmd.Args.TryGetValue("body", out var body);
+                cmd.Args.TryGetValue("else", out var elseBody);
+                
+                var result = EvaluateCondition(condition, ctx);
+                if (result && !string.IsNullOrWhiteSpace(body))
+                    RunInline(body!, ctx);
+                else if (!result && !string.IsNullOrWhiteSpace(elseBody))
+                    RunInline(elseBody!, ctx);
+            });
+
+            // Include module
+            Register("include", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("include requires path=<script.wflow>");
+                var full = System.IO.Path.IsPathRooted(path)
+                    ? path
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, path);
+                if (!System.IO.File.Exists(full))
+                    throw new System.IO.FileNotFoundException($"Include file not found: {path}");
+                
+                WinFlow.Core.Parsing.IParser parser = new WinFlow.Core.Parsing.WinFlowParser();
+                var tasks = parser.Parse(full);
+                var exec = new TaskExecutor();
+                exec.Run(tasks, ctx);
+            });
         }
 
         private static bool IsTrue(string value)
         {
             return value.Equals("1") || value.Equals("true", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EvaluateCondition(string condition, ExecutionContext ctx)
+        {
+            // Simple condition evaluator for: ==, !=, >, <, exists
+            condition = condition.Trim();
+            
+            // exists operator
+            if (condition.StartsWith("exists ", StringComparison.OrdinalIgnoreCase))
+            {
+                var pathExpr = condition.Substring(7).Trim();
+                pathExpr = Expand(pathExpr, ctx);
+                var full = System.IO.Path.IsPathRooted(pathExpr)
+                    ? pathExpr
+                    : System.IO.Path.Combine(ctx.WorkingDirectory, pathExpr);
+                return System.IO.File.Exists(full) || System.IO.Directory.Exists(full);
+            }
+
+            // binary operators
+            string left, right, op;
+            if (condition.Contains(" == "))
+            {
+                var parts = condition.Split(new[] { " == " }, 2, StringSplitOptions.None);
+                left = Expand(parts[0].Trim(), ctx);
+                right = Expand(parts[1].Trim(), ctx);
+                return left == right;
+            }
+            else if (condition.Contains(" != "))
+            {
+                var parts = condition.Split(new[] { " != " }, 2, StringSplitOptions.None);
+                left = Expand(parts[0].Trim(), ctx);
+                right = Expand(parts[1].Trim(), ctx);
+                return left != right;
+            }
+            else if (condition.Contains(" > "))
+            {
+                var parts = condition.Split(new[] { " > " }, 2, StringSplitOptions.None);
+                left = Expand(parts[0].Trim(), ctx);
+                right = Expand(parts[1].Trim(), ctx);
+                if (double.TryParse(left, out var l) && double.TryParse(right, out var r))
+                    return l > r;
+                return string.Compare(left, right, StringComparison.Ordinal) > 0;
+            }
+            else if (condition.Contains(" < "))
+            {
+                var parts = condition.Split(new[] { " < " }, 2, StringSplitOptions.None);
+                left = Expand(parts[0].Trim(), ctx);
+                right = Expand(parts[1].Trim(), ctx);
+                if (double.TryParse(left, out var l) && double.TryParse(right, out var r))
+                    return l < r;
+                return string.Compare(left, right, StringComparison.Ordinal) < 0;
+            }
+
+            // fallback: treat as boolean string
+            var val = Expand(condition, ctx);
+            return IsTrue(val);
         }
 
         private static RegistryKey ResolveHive(string hive)

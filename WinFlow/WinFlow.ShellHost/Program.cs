@@ -9,6 +9,9 @@ namespace WinFlow.ShellHost
 {
     internal static class Program
     {
+        private static readonly string HistoryFile = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".winflow_history");
+        
         private static int Main(string[] args)
         {
             if (args.Length == 0)
@@ -70,16 +73,26 @@ namespace WinFlow.ShellHost
 
             var parser = new WinFlowParser();
             var executor = new TaskExecutor();
+            var history = LoadHistory();
+            var historyIndex = history.Count;
 
             while (true)
             {
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.Write("winflow> ");
                 Console.ResetColor();
-                var line = Console.ReadLine();
+                var line = ReadLineWithHistory(history, ref historyIndex);
                 if (line == null) break; // EOF
                 line = line.Trim();
                 if (line.Length == 0) continue;
+                
+                // Add to history
+                if (history.Count == 0 || history[history.Count - 1] != line)
+                {
+                    history.Add(line);
+                    SaveHistory(history);
+                }
+                historyIndex = history.Count;
 
                 // Meta-commands start with ':' to avoid collision with language
                 if (line.StartsWith(":"))
@@ -218,7 +231,15 @@ namespace WinFlow.ShellHost
             {
                 case "help":
                 case "?":
-                    PrintHelp();
+                    if (!string.IsNullOrWhiteSpace(arg))
+                    {
+                        var helpText = WinFlow.Core.Runtime.CommandHelp.GetHelp(arg);
+                        Console.WriteLine(helpText);
+                    }
+                    else
+                    {
+                        PrintHelp();
+                    }
                     return MetaResult.Continue;
                 case "exit":
                 case "quit":
@@ -373,6 +394,136 @@ namespace WinFlow.ShellHost
             Console.WriteLine("  process.run  Execute process (async, fire-and-forget)");
             Console.WriteLine("  process.exec Execute process (sync, with output capture)");
             Console.WriteLine();
+        }
+
+        private static System.Collections.Generic.List<string> LoadHistory()
+        {
+            var list = new System.Collections.Generic.List<string>();
+            if (File.Exists(HistoryFile))
+            {
+                try
+                {
+                    var lines = File.ReadAllLines(HistoryFile);
+                    list.AddRange(lines);
+                }
+                catch { }
+            }
+            return list;
+        }
+
+        private static void SaveHistory(System.Collections.Generic.List<string> history)
+        {
+            try
+            {
+                var keep = history.Count > 500 ? history.GetRange(history.Count - 500, 500) : history;
+                File.WriteAllLines(HistoryFile, keep);
+            }
+            catch { }
+        }
+
+        private static string? ReadLineWithHistory(System.Collections.Generic.List<string> history, ref int historyIndex)
+        {
+            var buffer = new System.Text.StringBuilder();
+            int cursorPos = 0;
+
+            while (true)
+            {
+                var key = Console.ReadKey(intercept: true);
+
+                if (key.Key == ConsoleKey.Enter)
+                {
+                    Console.WriteLine();
+                    return buffer.ToString();
+                }
+                else if (key.Key == ConsoleKey.UpArrow)
+                {
+                    if (history.Count > 0 && historyIndex > 0)
+                    {
+                        historyIndex--;
+                        ClearCurrentLine(buffer.Length);
+                        buffer.Clear();
+                        buffer.Append(history[historyIndex]);
+                        cursorPos = buffer.Length;
+                        Console.Write(buffer.ToString());
+                    }
+                }
+                else if (key.Key == ConsoleKey.DownArrow)
+                {
+                    if (historyIndex < history.Count - 1)
+                    {
+                        historyIndex++;
+                        ClearCurrentLine(buffer.Length);
+                        buffer.Clear();
+                        buffer.Append(history[historyIndex]);
+                        cursorPos = buffer.Length;
+                        Console.Write(buffer.ToString());
+                    }
+                    else if (historyIndex == history.Count - 1)
+                    {
+                        historyIndex = history.Count;
+                        ClearCurrentLine(buffer.Length);
+                        buffer.Clear();
+                        cursorPos = 0;
+                    }
+                }
+                else if (key.Key == ConsoleKey.Backspace && buffer.Length > 0 && cursorPos > 0)
+                {
+                    buffer.Remove(cursorPos - 1, 1);
+                    cursorPos--;
+                    RedrawLine(buffer, cursorPos);
+                }
+                else if (key.Key == ConsoleKey.Delete && cursorPos < buffer.Length)
+                {
+                    buffer.Remove(cursorPos, 1);
+                    RedrawLine(buffer, cursorPos);
+                }
+                else if (key.Key == ConsoleKey.LeftArrow && cursorPos > 0)
+                {
+                    cursorPos--;
+                    Console.SetCursorPosition(Console.CursorLeft - 1, Console.CursorTop);
+                }
+                else if (key.Key == ConsoleKey.RightArrow && cursorPos < buffer.Length)
+                {
+                    cursorPos++;
+                    Console.SetCursorPosition(Console.CursorLeft + 1, Console.CursorTop);
+                }
+                else if (key.Key == ConsoleKey.Home)
+                {
+                    Console.SetCursorPosition(Console.CursorLeft - cursorPos, Console.CursorTop);
+                    cursorPos = 0;
+                }
+                else if (key.Key == ConsoleKey.End)
+                {
+                    Console.SetCursorPosition(Console.CursorLeft + (buffer.Length - cursorPos), Console.CursorTop);
+                    cursorPos = buffer.Length;
+                }
+                else if (!char.IsControl(key.KeyChar))
+                {
+                    buffer.Insert(cursorPos, key.KeyChar);
+                    cursorPos++;
+                    RedrawLine(buffer, cursorPos);
+                }
+                else if (key.Key == ConsoleKey.C && key.Modifiers.HasFlag(ConsoleModifiers.Control))
+                {
+                    Console.WriteLine();
+                    return null;
+                }
+            }
+        }
+
+        private static void ClearCurrentLine(int length)
+        {
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write(new string(' ', length));
+            Console.SetCursorPosition(0, Console.CursorTop);
+        }
+
+        private static void RedrawLine(System.Text.StringBuilder buffer, int cursorPos)
+        {
+            var startX = Console.CursorLeft - cursorPos;
+            Console.SetCursorPosition(startX, Console.CursorTop);
+            Console.Write(buffer.ToString() + " ");
+            Console.SetCursorPosition(startX + cursorPos, Console.CursorTop);
         }
     }
 }

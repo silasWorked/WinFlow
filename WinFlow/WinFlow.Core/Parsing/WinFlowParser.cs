@@ -29,10 +29,10 @@ namespace WinFlow.Core.Parsing
                 var lname = name.ToLowerInvariant();
 
                 // handle two-part commands like "env set" => command name becomes "env.set"
-                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop")
+                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include")
                 {
                     var (sub, rest2) = SplitFirstToken(rest ?? string.Empty);
-                    if (!string.IsNullOrWhiteSpace(sub))
+                    if (!string.IsNullOrWhiteSpace(sub) && lname != "if" && lname != "include")
                     {
                         lname = lname + "." + sub.ToLowerInvariant();
                         rest = rest2;
@@ -62,6 +62,8 @@ namespace WinFlow.Core.Parsing
                     case "file.mkdir":
                     case "file.delete":
                     case "file.copy":
+                    case "file.move":
+                    case "file.exists":
                     case "process.run":
                     case "process.exec":
                     case "reg.set":
@@ -72,6 +74,8 @@ namespace WinFlow.Core.Parsing
                     case "net.download":
                     case "loop.repeat":
                     case "loop.foreach":
+                    case "if":
+                    case "include":
                         step.Commands.Add(new FlowCommand
                         {
                             Name = lname,
@@ -79,7 +83,7 @@ namespace WinFlow.Core.Parsing
                         });
                         break;
                     default:
-                        throw new InvalidDataException($"Unknown command '{name}' at line {i + 1}.");
+                        throw new InvalidDataException($"Unknown command '{name}' at line {i + 1}: {line}");
                 }
             }
 
