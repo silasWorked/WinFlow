@@ -46,33 +46,38 @@ catch:
 ### **Мощные конструкции языка**
 ```wflow
 // Циклы
-loop.repeat count=3:
-    echo Iteration ${index}
+loop.repeat count=3 body="echo Iteration ${index}"
+
+loop.foreach items="apple,banana,orange" var=item body="echo Processing: ${item}"
 
 // Условия
-if condition="${status}" equals="ok":
-    echo Success!
-    env set result=passed
-else:
-    echo Failed
-    exit code=1
-
-// Работа с массивами
-array.create name=items values="apple,banana,orange"
-loop.foreach array=items element=item:
-    echo Processing: ${item}
+if condition="${status} == ok" body="echo Success!" else="echo Failed"
 ```
 
 ### **Модули и встроенные команды**
 
 | Модуль | Описание | Примеры команд |
 |--------|----------|----------------|
-| **env** | Переменные окружения | `env set`, `env get`, `env print` |
-| **file** | Файловые операции | `file read`, `file write`, `file copy`, `file delete` |
-| **process** | Запуск процессов | `process.exec`, `process.start` |
-| **json** | Работа с JSON | `json.parse`, `json.get`, `json.set` |
-| **net** | HTTP/сеть | `net download`, `net request` |
-| **array** | Массивы | `array.create`, `array.add`, `array.get` |
+| **env** | Переменные окружения | `env.set`, `env.get`, `env.print` |
+| **file** | Файловые операции | `file.read`, `file.write`, `file.copy`, `file.delete` |
+| **process** | Запуск процессов | `process.exec`, `process.run` |
+| **json** | Работа с JSON | `json.parse`, `json.get` |
+| **net** | HTTP/сеть | `net.download` |
+| **http** | HTTP запросы | `http.get`, `http.post`, `http.put` |
+| **array** | Массивы | `array.split`, `array.join`, `array.length` |
+| **string** | Строковые операции | `string.replace`, `string.upper`, `string.lower` |
+| **math** | Математика | `math.add`, `math.subtract`, `math.multiply`, `math.divide` |
+| **datetime** | Дата и время | `datetime.now`, `datetime.format`, `datetime.add` |
+| **path** | Работа с путями | `path.join`, `path.dirname`, `path.basename` |
+| **regex** | Регулярные выражения | `regex.match`, `regex.find`, `regex.replace` |
+| **archive** | Архивы (ZIP) | `archive.create`, `archive.extract`, `archive.list` |
+| **log** | Логирование | `log.info`, `log.warning`, `log.error` |
+| **config** | INI конфигурация | `config.read`, `config.get`, `config.set` |
+| **csv** | CSV таблицы | `csv.read`, `csv.write`, `csv.filter` |
+| **xml** | XML документы | `xml.parse`, `xml.get`, `xml.add_element` |
+| **registry** | Реестр Windows | `registry.get`, `registry.set`, `registry.delete` |
+| **async** | Асинхронность | `async.start`, `async.wait`, `async.status` |
+| **input** | Ввод пользователя | `input.text`, `input.password`, `input.confirm` |
 
 ## 🚀 Быстрый старт
 
