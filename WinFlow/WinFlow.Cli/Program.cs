@@ -14,7 +14,7 @@ namespace WinFlow.Cli
 {
     internal static class Program
     {
-        private const string Version = "0.2.3";
+        private const string Version = "0.2.4";
 
         private static int Main(string[] args)
         {
@@ -452,8 +452,9 @@ namespace WinFlow.Cli
                 };
                 System.Diagnostics.Process.Start(psi);
 
-                Console.WriteLine("Updater started. This process will exit now to allow file replacement.");
-                return 0;
+                Console.WriteLine("Updater started. Exiting to allow file replacement.");
+                // Exit immediately without waiting, so the current executable is released
+                Environment.Exit(0);
             }
             catch (Exception ex)
             {
