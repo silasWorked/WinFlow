@@ -3,72 +3,115 @@ title: Команды (справочник)
 nav_order: 3
 ---
 
-# Команды WinFlow (MVP)
+# Команды WinFlow
 
-Эта страница — справочник по командам. Сейчас доступны базовые встроенные.
+Справочник по встроенным командам. Все аргументы вида `key=value`.
+Подстановки переменных: `${NAME}`.
 
-## Встроенные
+## Базовые
 
 ### echo
 - Назначение: вывести строку в лог
 - Сигнатура: `echo <text>`
-- Аргументы:
-  - `message` (внутреннее имя) — текст сообщения
-- Примеры:
-  - `echo "Hello"`
-  - `echo Done`
+- Примеры: `echo "Hello"`, `echo Done`
 
 ### noop
 - Назначение: заглушка, ничего не делает
 - Сигнатура: `noop`
-- Пример: `noop`
+
+## Env
 
 ### env set
 - Назначение: установить переменную контекста
-- Сигнатура: `env set name=<VAR> value=<VALUE>`
-- Псевдоним: можно использовать `key=` вместо `name=`
+- Сигнатура: `env set name=<VAR> value=<VALUE>` (или `key=`)
 - Пример: `env set name=GREETING value="Hello"`
 
 ### env unset
 - Назначение: удалить переменную из контекста
 - Сигнатура: `env unset name=<VAR>`
-- Пример: `env unset name=GREETING`
 
 ### env print
-- Назначение: вывести переменные контекста
+- Назначение: вывести все переменные
 - Сигнатура: `env print`
-- Пример: `env print`
+
+## File
 
 ### file write
 - Назначение: создать/перезаписать файл
 - Сигнатура: `file write path=<FILE> content=<TEXT>`
-- Примечание: относительные пути — относительно рабочей папки скрипта
-- Пример: `file write path="out.txt" content="Hello"`
 
 ### file append
 - Назначение: дописать в конец файла
 - Сигнатура: `file append path=<FILE> content=<TEXT>`
-- Пример: `file append path="out.txt" content=" World"`
+
+### file mkdir
+- Назначение: создать каталог
+- Сигнатура: `file mkdir path=<DIR>`
+
+### file delete
+- Назначение: удалить файл/каталог
+- Сигнатура: `file delete path=<FILE|DIR> [recursive=true|false]`
+
+### file copy
+- Назначение: скопировать файл
+- Сигнатура: `file copy src=<FILE> dst=<FILE> [overwrite=true|false]`
+
+## Process
 
 ### process run
-- Назначение: запустить процесс (фоновый, не ждём завершения)
+- Назначение: запустить процесс (не ждать завершения)
 - Сигнатура: `process run file=<EXE> args=<ARGS>`
-- Пример: `process run file="notepad.exe" args="readme.txt"`
 
 ### process exec
-- Назначение: запустить процесс и ждать завершения; захватить вывод
+- Назначение: запустить процесс и ждать завершения; печатает stdout/stderr
 - Сигнатура: `process exec file=<EXE> args=<ARGS>`
-- Пример: `process exec file="cmd.exe" args="/c echo test"`
+
+## Registry (Windows)
+
+### reg set
+- Назначение: создать/обновить значение реестра
+- Сигнатура: `reg set hive=<HKCU|HKLM> key=<PATH> name=<NAME> value=<VAL> [type=STRING|DWORD|QWORD|MULTI|EXPAND]`
+- По умолчанию: `hive=HKCU`, `type=STRING`
+
+### reg get
+- Назначение: получить значение реестра (печатает в лог)
+- Сигнатура: `reg get hive=<HKCU|HKLM> key=<PATH> name=<NAME>`
+
+### reg delete
+- Назначение: удалить значение или ключ
+- Сигнатура: `reg delete hive=<HKCU|HKLM> key=<PATH> [name=<NAME>]`
+- Если указан `name` — удаляет значение; иначе удаляет ключ целиком
+
+## Sleep
+
+### sleep ms
+- Назначение: задержка в миллисекундах
+- Сигнатура: `sleep ms ms=<INT>`
+
+### sleep sec
+- Назначение: задержка в секундах
+- Сигнатура: `sleep sec sec=<INT>`
+
+## Net
+
+### net download
+- Назначение: скачать файл по HTTP(S)
+- Сигнатура: `net download url=<URL> path=<FILE>`
+
+## Loop
+
+### loop repeat
+- Назначение: выполнить тело N раз
+- Сигнатура: `loop repeat count=<N> body="<команда>"`
+- Переменные: `${index}`
+
+### loop foreach
+- Назначение: обойти элементы списка
+- Сигнатура: `loop foreach items="a,b,c" [sep=","] [var=item] body="<команда>"`
+- Переменные: `${index}`, `${<var>}`
 
 ---
 
-# Формат добавления новых команд (в ядре)
-- Класс регистрируется в `CommandDispatcher`
-- Сигнатура обработчика: `Execute(FlowCommand cmd, ExecutionContext ctx)`
-- Ошибки сообщайте через исключения (будет перехват/логирование на уровне рантайма)
-
-План модулей:
-- Env: `env set`, `env unset`, `env print`
-- File: `file write`, `file append`, `file copy`, `file delete`
-- Process: `process run`, `process exec`, `process wait`
-- Registry: `reg set`, `reg get`, `reg delete`
+# Для разработчиков
+- Регистрация обработчиков команд — в классе `CommandDispatcher`
+- Обработчик: `Action<FlowCommand, ExecutionContext>`

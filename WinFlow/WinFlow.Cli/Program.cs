@@ -14,7 +14,7 @@ namespace WinFlow.Cli
 {
     internal static class Program
     {
-        private const string Version = "0.1.4";
+        private const string Version = "0.1.5";
 
         private static int Main(string[] args)
         {
@@ -440,10 +440,25 @@ namespace WinFlow.Cli
             Console.WriteLine("File Module:");
             Console.WriteLine("  file write   Create or overwrite a file");
             Console.WriteLine("  file append  Append content to a file");
+            Console.WriteLine("  file mkdir   Create directory");
+            Console.WriteLine("  file delete  Delete file or directory");
+            Console.WriteLine("  file copy    Copy file");
             Console.WriteLine();
             Console.WriteLine("Process Module:");
             Console.WriteLine("  process.run  Execute process (async, fire-and-forget)");
             Console.WriteLine("  process.exec Execute process (sync, with output capture)");
+            Console.WriteLine();
+            Console.WriteLine("Registry Module:");
+            Console.WriteLine("  reg set      Set registry value");
+            Console.WriteLine("  reg get      Get registry value");
+            Console.WriteLine("  reg delete   Delete value or key");
+            Console.WriteLine();
+            Console.WriteLine("Sleep Module:");
+            Console.WriteLine("  sleep ms     Sleep milliseconds (sleep.ms ms=<num>)");
+            Console.WriteLine("  sleep sec    Sleep seconds (sleep.sec sec=<num>)");
+            Console.WriteLine();
+            Console.WriteLine("Net Module:");
+            Console.WriteLine("  net download Download file from URL");
             Console.WriteLine();
             Console.WriteLine("Example Usage:");
             Console.WriteLine("  echo message=\"Hello World\"");
