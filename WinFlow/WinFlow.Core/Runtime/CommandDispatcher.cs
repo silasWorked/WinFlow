@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -102,6 +103,17 @@ namespace WinFlow.Core.Runtime
                 if (!cmd.Args.TryGetValue("message", out var message))
                     message = string.Empty;
                 ctx.Log(message);
+            });
+
+            Register("isset", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("var", out var varName))
+                    throw new ArgumentException("isset requires var=<name>");
+                
+                var exists = ctx.Environment.ContainsKey(varName);
+                var resultVar = cmd.Args.TryGetValue("result", out var rv) ? rv : "ISSET";
+                ctx.Environment[resultVar] = exists.ToString().ToLowerInvariant();
+                ctx.Log($"isset {varName} = {exists}");
             });
 
             // Env module
@@ -939,6 +951,350 @@ namespace WinFlow.Core.Runtime
                 ctx.Environment[varName] = result;
                 ctx.Log($"string.format result = '{result}'");
             });
+
+            // DateTime module
+            Register("datetime.now", (cmd, ctx) =>
+            {
+                var now = DateTime.Now;
+                var format = cmd.Args.TryGetValue("format", out var fmt) ? fmt : "o"; // ISO 8601
+                var result = now.ToString(format);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "DATETIME";
+                ctx.Environment[varName] = result;
+                ctx.Log($"datetime.now = {result}");
+            });
+
+            Register("datetime.format", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("date", out var dateStr))
+                    throw new ArgumentException("datetime.format requires date=<value>");
+                
+                var format = cmd.Args.TryGetValue("format", out var fmt) ? fmt : "o";
+                
+                if (DateTime.TryParse(dateStr, out var date))
+                {
+                    var result = date.ToString(format);
+                    var varName = cmd.Args.TryGetValue("var", out var v) ? v : "DATETIME";
+                    ctx.Environment[varName] = result;
+                    ctx.Log($"datetime.format = {result}");
+                }
+                else
+                {
+                    throw new ArgumentException($"Invalid date format: {dateStr}");
+                }
+            });
+
+            Register("datetime.parse", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("datetime.parse requires text=<value>");
+                
+                if (DateTime.TryParse(text, out var date))
+                {
+                    var result = date.ToString("o");
+                    var varName = cmd.Args.TryGetValue("var", out var v) ? v : "DATETIME";
+                    ctx.Environment[varName] = result;
+                    ctx.Log($"datetime.parse = {result}");
+                }
+                else
+                {
+                    throw new ArgumentException($"Cannot parse date: {text}");
+                }
+            });
+
+            Register("datetime.add", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("date", out var dateStr))
+                    throw new ArgumentException("datetime.add requires date=<value>");
+                
+                if (!DateTime.TryParse(dateStr, out var date))
+                    throw new ArgumentException($"Invalid date: {dateStr}");
+                
+                if (cmd.Args.TryGetValue("days", out var daysStr) && int.TryParse(daysStr, out var days))
+                    date = date.AddDays(days);
+                if (cmd.Args.TryGetValue("hours", out var hoursStr) && int.TryParse(hoursStr, out var hours))
+                    date = date.AddHours(hours);
+                if (cmd.Args.TryGetValue("minutes", out var minsStr) && int.TryParse(minsStr, out var mins))
+                    date = date.AddMinutes(mins);
+                if (cmd.Args.TryGetValue("seconds", out var secsStr) && int.TryParse(secsStr, out var secs))
+                    date = date.AddSeconds(secs);
+                
+                var result = date.ToString("o");
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "DATETIME";
+                ctx.Environment[varName] = result;
+                ctx.Log($"datetime.add = {result}");
+            });
+
+            Register("datetime.diff", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("start", out var startStr) || !cmd.Args.TryGetValue("end", out var endStr))
+                    throw new ArgumentException("datetime.diff requires start=<date> end=<date>");
+                
+                if (!DateTime.TryParse(startStr, out var start) || !DateTime.TryParse(endStr, out var end))
+                    throw new ArgumentException("Invalid date format in datetime.diff");
+                
+                var span = end - start;
+                var unit = cmd.Args.TryGetValue("unit", out var u) ? u : "seconds";
+                
+                double result = unit.ToLowerInvariant() switch
+                {
+                    "days" => span.TotalDays,
+                    "hours" => span.TotalHours,
+                    "minutes" => span.TotalMinutes,
+                    "seconds" => span.TotalSeconds,
+                    "milliseconds" => span.TotalMilliseconds,
+                    _ => span.TotalSeconds
+                };
+                
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "DATETIME_DIFF";
+                ctx.Environment[varName] = result.ToString("F2");
+                ctx.Log($"datetime.diff = {result:F2} {unit}");
+            });
+
+            // Path module
+            Register("path.join", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("parts", out var partsStr))
+                    throw new ArgumentException("path.join requires parts=<comma-separated>");
+                
+                var parts = partsStr.Split(',').Select(p => p.Trim()).ToArray();
+                var result = System.IO.Path.Combine(parts);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "PATH";
+                ctx.Environment[varName] = result;
+                ctx.Log($"path.join = {result}");
+            });
+
+            Register("path.dirname", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("path.dirname requires path=<value>");
+                
+                var result = System.IO.Path.GetDirectoryName(path) ?? string.Empty;
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "PATH";
+                ctx.Environment[varName] = result;
+                ctx.Log($"path.dirname = {result}");
+            });
+
+            Register("path.basename", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("path.basename requires path=<value>");
+                
+                var result = System.IO.Path.GetFileName(path);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "PATH";
+                ctx.Environment[varName] = result;
+                ctx.Log($"path.basename = {result}");
+            });
+
+            Register("path.extension", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("path.extension requires path=<value>");
+                
+                var result = System.IO.Path.GetExtension(path);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "PATH";
+                ctx.Environment[varName] = result;
+                ctx.Log($"path.extension = {result}");
+            });
+
+            Register("path.exists", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("path.exists requires path=<value>");
+                
+                var exists = System.IO.File.Exists(path) || System.IO.Directory.Exists(path);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "PATH_EXISTS";
+                ctx.Environment[varName] = exists.ToString().ToLowerInvariant();
+                ctx.Log($"path.exists({path}) = {exists}");
+            });
+
+            Register("path.is_directory", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("path.is_directory requires path=<value>");
+                
+                var isDir = System.IO.Directory.Exists(path);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "IS_DIR";
+                ctx.Environment[varName] = isDir.ToString().ToLowerInvariant();
+                ctx.Log($"path.is_directory({path}) = {isDir}");
+            });
+
+            Register("path.normalize", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("path.normalize requires path=<value>");
+                
+                var result = System.IO.Path.GetFullPath(path);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "PATH";
+                ctx.Environment[varName] = result;
+                ctx.Log($"path.normalize = {result}");
+            });
+
+            // Log module
+            Register("log.config", (cmd, ctx) =>
+            {
+                // Configure logging settings
+                var level = cmd.Args.TryGetValue("level", out var l) ? l : "INFO";
+                var file = cmd.Args.TryGetValue("file", out var f) ? f : null;
+                var format = cmd.Args.TryGetValue("format", out var fmt) ? fmt : "[%TIME%] %LEVEL% - %MESSAGE%";
+                
+                ctx.Environment["__LOG_LEVEL__"] = level;
+                if (file != null) ctx.Environment["__LOG_FILE__"] = file;
+                ctx.Environment["__LOG_FORMAT__"] = format;
+                ctx.Log($"log.config: level={level}, file={file}, format={format}");
+            });
+
+            Register("log.info", (cmd, ctx) =>
+            {
+                var message = cmd.Args.TryGetValue("message", out var m) ? m : cmd.Args.FirstOrDefault().Value ?? "";
+                LogMessage(ctx, "INFO", message);
+            });
+
+            Register("log.debug", (cmd, ctx) =>
+            {
+                var message = cmd.Args.TryGetValue("message", out var m) ? m : cmd.Args.FirstOrDefault().Value ?? "";
+                var level = ctx.Environment.TryGetValue("__LOG_LEVEL__", out var l) ? l : "INFO";
+                if (level == "DEBUG" || ctx.Verbose)
+                    LogMessage(ctx, "DEBUG", message);
+            });
+
+            Register("log.warning", (cmd, ctx) =>
+            {
+                var message = cmd.Args.TryGetValue("message", out var m) ? m : cmd.Args.FirstOrDefault().Value ?? "";
+                LogMessage(ctx, "WARNING", message);
+            });
+
+            Register("log.error", (cmd, ctx) =>
+            {
+                var message = cmd.Args.TryGetValue("message", out var m) ? m : cmd.Args.FirstOrDefault().Value ?? "";
+                LogMessage(ctx, "ERROR", message);
+            });
+
+            // Regex module
+            Register("regex.match", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("pattern", out var pattern) || !cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("regex.match requires pattern=<regex> text=<value>");
+                
+                var regex = new System.Text.RegularExpressions.Regex(pattern);
+                var isMatch = regex.IsMatch(text);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "REGEX_MATCH";
+                ctx.Environment[varName] = isMatch.ToString().ToLowerInvariant();
+                ctx.Log($"regex.match = {isMatch}");
+            });
+
+            Register("regex.find", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("pattern", out var pattern) || !cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("regex.find requires pattern=<regex> text=<value>");
+                
+                var regex = new System.Text.RegularExpressions.Regex(pattern);
+                var matches = regex.Matches(text);
+                var results = string.Join(",", matches.Select(m => m.Value));
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "REGEX_RESULTS";
+                ctx.Environment[varName] = results;
+                ctx.Log($"regex.find found {matches.Count} match(es)");
+            });
+
+            Register("regex.replace", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("pattern", out var pattern) || 
+                    !cmd.Args.TryGetValue("replacement", out var replacement) ||
+                    !cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("regex.replace requires pattern=<regex> replacement=<value> text=<value>");
+                
+                var regex = new System.Text.RegularExpressions.Regex(pattern);
+                var result = regex.Replace(text, replacement);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "REGEX_RESULT";
+                ctx.Environment[varName] = result;
+                ctx.Log($"regex.replace = {result}");
+            });
+
+            // Archive module (requires System.IO.Compression)
+            Register("archive.create", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("source", out var source) || !cmd.Args.TryGetValue("destination", out var dest))
+                    throw new ArgumentException("archive.create requires source=<dir> destination=<zip>");
+                
+                if (System.IO.File.Exists(dest))
+                    System.IO.File.Delete(dest);
+                
+                System.IO.Compression.ZipFile.CreateFromDirectory(source, dest);
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "ARCHIVE_PATH";
+                ctx.Environment[varName] = dest;
+                ctx.Log($"archive.create: {dest}");
+            });
+
+            Register("archive.extract", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("source", out var source) || !cmd.Args.TryGetValue("destination", out var dest))
+                    throw new ArgumentException("archive.extract requires source=<zip> destination=<dir>");
+                
+                System.IO.Compression.ZipFile.ExtractToDirectory(source, dest, overwriteFiles: true);
+                ctx.Log($"archive.extract: {source} -> {dest}");
+            });
+
+            Register("archive.list", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("file", out var file))
+                    throw new ArgumentException("archive.list requires file=<zip>");
+                
+                using var archive = System.IO.Compression.ZipFile.OpenRead(file);
+                var entries = string.Join(",", archive.Entries.Select(e => e.FullName));
+                var varName = cmd.Args.TryGetValue("var", out var v) ? v : "ARCHIVE_CONTENTS";
+                ctx.Environment[varName] = entries;
+                ctx.Log($"archive.list: {archive.Entries.Count} entries");
+            });
+
+            Register("archive.add", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("archive", out var archivePath) || !cmd.Args.TryGetValue("files", out var filesStr))
+                    throw new ArgumentException("archive.add requires archive=<zip> files=<comma-separated>");
+                
+                var files = filesStr.Split(',').Select(f => f.Trim()).ToArray();
+                using var archive = System.IO.Compression.ZipFile.Open(archivePath, System.IO.Compression.ZipArchiveMode.Update);
+                foreach (var file in files)
+                {
+                    if (System.IO.File.Exists(file))
+                    {
+                        var entryName = System.IO.Path.GetFileName(file);
+                        archive.CreateEntryFromFile(file, entryName);
+                        ctx.Log($"archive.add: {entryName}");
+                    }
+                }
+            });
+        }
+
+        private static void LogMessage(ExecutionContext ctx, string level, string message)
+        {
+            var format = ctx.Environment.TryGetValue("__LOG_FORMAT__", out var fmt) ? fmt : "[%TIME%] %LEVEL% - %MESSAGE%";
+            var logFile = ctx.Environment.TryGetValue("__LOG_FILE__", out var file) ? file : null;
+            
+            var log = format
+                .Replace("%TIME%", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))
+                .Replace("%LEVEL%", level.PadRight(7))
+                .Replace("%MESSAGE%", message);
+            
+            // Console output with color
+            var originalColor = Console.ForegroundColor;
+            Console.ForegroundColor = level switch
+            {
+                "ERROR" => ConsoleColor.Red,
+                "WARNING" => ConsoleColor.Yellow,
+                "DEBUG" => ConsoleColor.Gray,
+                _ => ConsoleColor.White
+            };
+            Console.WriteLine(log);
+            Console.ForegroundColor = originalColor;
+            
+            // File output
+            if (logFile != null)
+            {
+                try
+                {
+                    System.IO.File.AppendAllText(logFile, log + Environment.NewLine);
+                }
+                catch { }
+            }
         }
 
         private static (string, string?) SplitFirstToken(string line)

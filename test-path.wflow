@@ -1,0 +1,40 @@
+# Test path module
+
+# Join paths
+path.join parts="C:\temp,backup,data.txt" var=fullpath
+echo Full path: ${fullpath}
+
+# Get directory name
+path.dirname path="C:\Windows\System32\notepad.exe" var=dir
+echo Directory: ${dir}
+
+# Get basename
+path.basename path="C:\Windows\System32\notepad.exe" var=name
+echo Basename: ${name}
+
+# Get extension
+path.extension path="C:\temp\document.pdf" var=ext
+echo Extension: ${ext}
+
+# Check if path exists
+path.exists path="C:\Windows" var=win_exists
+echo Windows exists: ${win_exists}
+
+path.exists path="C:\NonExistent" var=fake_exists
+echo Fake path exists: ${fake_exists}
+
+# Check if directory
+path.is_directory path="C:\Windows" var=is_dir
+echo Is directory: ${is_dir}
+
+# Normalize path
+path.normalize path="..\test\..\WinFlow" var=norm
+echo Normalized: ${norm}
+
+# Working with script path
+echo Script file: ${__FILE__}
+path.dirname path=${__FILE__} var=script_dir
+echo Script directory: ${script_dir}
+
+path.basename path=${__FILE__} var=script_name
+echo Script name: ${script_name}

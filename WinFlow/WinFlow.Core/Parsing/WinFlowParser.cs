@@ -110,7 +110,7 @@ namespace WinFlow.Core.Parsing
                 var lname = name.ToLowerInvariant();
 
                 // Handle two-part commands
-                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "try" or "string" or "json" or "http" or "array" or "math")
+                if (lname is "env" or "file" or "process" or "reg" or "net" or "sleep" or "loop" or "if" or "include" or "try" or "string" or "json" or "http" or "array" or "math" or "datetime" or "path" or "log" or "regex" or "archive")
                 {
                     var (sub, rest2) = SplitFirstToken(rest ?? string.Empty);
                     if (!string.IsNullOrWhiteSpace(sub) && lname != "if" && lname != "include" && lname != "try")
@@ -179,7 +179,32 @@ namespace WinFlow.Core.Parsing
                     case "math.round":
                     case "math.floor":
                     case "math.ceil":
+                    case "datetime.now":
+                    case "datetime.format":
+                    case "datetime.parse":
+                    case "datetime.add":
+                    case "datetime.diff":
+                    case "path.join":
+                    case "path.dirname":
+                    case "path.basename":
+                    case "path.extension":
+                    case "path.exists":
+                    case "path.is_directory":
+                    case "path.normalize":
+                    case "log.config":
+                    case "log.info":
+                    case "log.debug":
+                    case "log.warning":
+                    case "log.error":
+                    case "regex.match":
+                    case "regex.find":
+                    case "regex.replace":
+                    case "archive.create":
+                    case "archive.extract":
+                    case "archive.list":
+                    case "archive.add":
                     case "return":
+                    case "isset":
                     case "if":
                     case "try":
                     case "include":

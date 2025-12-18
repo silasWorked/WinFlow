@@ -1,0 +1,37 @@
+# Test archive module
+
+# Create test directory and files
+env.set name=test_dir value=c:\temp\archive_test
+file.mkdir path=${test_dir}
+
+file.write path="${test_dir}\file1.txt" content="Content 1"
+file.write path="${test_dir}\file2.txt" content="Content 2"
+file.write path="${test_dir}\file3.txt" content="Content 3"
+
+# Create archive from directory
+env.set name=archive_path value=c:\temp\test_backup.zip
+archive.create source=${test_dir} destination=${archive_path}
+echo Archive created: ${archive_path}
+
+# List archive contents
+archive.list file=${archive_path} var=contents
+echo Archive contents: ${contents}
+
+# Extract archive
+env.set name=extract_dir value=c:\temp\archive_extract
+archive.extract source=${archive_path} destination=${extract_dir}
+echo Extracted to: ${extract_dir}
+
+# Add more files to existing archive
+file.write path="c:\temp\extra.txt" content="Extra file"
+archive.add archive=${archive_path} files="c:\temp\extra.txt"
+
+# List updated archive
+archive.list file=${archive_path} var=updated_contents
+echo Updated contents: ${updated_contents}
+
+# Cleanup
+file.delete path=${archive_path}
+file.delete path="c:\temp\extra.txt"
+
+echo Test completed

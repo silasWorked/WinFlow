@@ -1,0 +1,17 @@
+[2025-12-18 23:15:23] [DEBUG  ] This is a debug message
+[2025-12-18 23:15:23] [INFO   ] Application started
+[2025-12-18 23:15:23] [WARNING] This is a warning
+[2025-12-18 23:15:23] [ERROR  ] This is an error
+[2025-12-18 23:15:23] [INFO   ] 
+[2025-12-18 23:15:23] INFO    - This info will show
+[2025-12-18 23:15:23] WARNING - This warning will show
+[2025-12-18 23:15:37] [DEBUG  ] This is a debug message
+[2025-12-18 23:15:37] [INFO   ] Application started
+[2025-12-18 23:15:37] [WARNING] This is a warning
+[2025-12-18 23:15:37] [ERROR  ] This is an error
+[2025-12-18 23:15:37] [INFO   ] 
+[2025-12-18 23:15:37] INFO    - This info will show
+[2025-12-18 23:15:37] WARNING - This warning will show
+[2025-12-18 23:15:37] INFO    - User: silas
+[2025-12-18 23:15:37] INFO    - Processing 42 items
+[2025-12-18 23:15:37] INFO    - Console only log

@@ -1,0 +1,30 @@
+# Test log module
+
+# Configure logging
+log.config level=DEBUG file=test-log.txt format="[%TIME%] [%LEVEL%] %MESSAGE%"
+
+# Test different log levels
+log.debug message="This is a debug message"
+log.info message="Application started"
+log.warning message="This is a warning"
+log.error message="This is an error"
+
+# Log without explicit message parameter
+log.info "Processing items..."
+
+# Test log levels (only INFO and above should show)
+log.config level=INFO
+log.debug message="This debug won't show"
+log.info message="This info will show"
+log.warning message="This warning will show"
+
+# Log with variables
+env.set name=user value=${__USER__}
+log.info message="User: ${user}"
+
+env.set name=count value=42
+log.info message="Processing ${count} items"
+
+# Disable file logging
+log.config level=INFO
+log.info message="Console only log"

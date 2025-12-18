@@ -1,0 +1,33 @@
+# Test datetime module
+
+# Get current datetime
+datetime.now var=now
+echo Current time: ${now}
+
+# Get current date with custom format
+datetime.now format=yyyy-MM-dd var=today
+echo Today: ${today}
+
+# Format a specific date
+datetime.format date="2024-01-01" format="dd/MM/yyyy" var=formatted
+echo Formatted: ${formatted}
+
+# Parse date from string
+datetime.parse text="2024-12-31 23:59:59" var=parsed
+echo Parsed: ${parsed}
+
+# Add days to current date
+datetime.now var=start_date
+datetime.add date=${start_date} days=7 var=week_later
+echo Week later: ${week_later}
+
+# Add hours and minutes
+datetime.add date=${start_date} hours=2 minutes=30 var=later
+echo 2.5 hours later: ${later}
+
+# Calculate difference between dates
+datetime.diff start="2024-01-01" end="2024-12-31" unit=days var=days_diff
+echo Days in 2024: ${days_diff}
+
+datetime.diff start=${start_date} end=${week_later} unit=hours var=hours_diff
+echo Hours difference: ${hours_diff}

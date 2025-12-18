@@ -1,0 +1,32 @@
+# Test regex module
+
+# Test email validation
+regex.match pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" text="user@example.com" var=valid_email
+echo Email valid: ${valid_email}
+
+regex.match pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" text="invalid.email" var=invalid_email
+echo Invalid email: ${invalid_email}
+
+# Find all numbers in text
+regex.find pattern="\d+" text="I have 42 apples and 17 oranges" var=numbers
+echo Numbers found: ${numbers}
+
+# Find all words
+regex.find pattern="\w+" text="Hello World! Test 123" var=words
+echo Words found: ${words}
+
+# Replace text
+regex.replace pattern="\d+" replacement="X" text="File_123_test_456.txt" var=replaced
+echo Replaced: ${replaced}
+
+# Replace spaces with underscores
+regex.replace pattern="\s+" replacement="_" text="hello world test" var=underscored
+echo Underscored: ${underscored}
+
+# Extract domain from URL
+regex.find pattern="https?://([^/]+)" text="https://github.com/user/repo" var=domain
+echo Domain: ${domain}
+
+# Validate phone number
+regex.match pattern="^\d{3}-\d{3}-\d{4}$" text="555-123-4567" var=valid_phone
+echo Phone valid: ${valid_phone}

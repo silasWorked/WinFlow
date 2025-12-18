@@ -1,0 +1,36 @@
+# Test conditionals and isset
+
+# Test isset
+env.set name=myvar value="test"
+isset var=myvar result=exists
+echo ${exists}
+
+isset var=nonexistent result=not_exists
+echo ${not_exists}
+
+# Test if with isset (simple one-liner body)
+env.set name=username value="admin"
+isset var=username result=has_user
+if condition="${has_user} == true" body="echo User: ${username}"
+
+# Test nested conditions with separate ifs
+env.set name=count value=10
+if condition="${count} == 10" body="echo Count is 10"
+
+# Practical example: check config before use
+isset var=API_KEY result=has_key
+if condition="${has_key} == false" body="echo API_KEY not set"
+env.set name=API_KEY value="default_key"
+echo Using API_KEY: ${API_KEY}
+
+# Test with existing variable
+env.set name=DEBUG value="true"
+isset var=DEBUG result=has_debug
+echo has_debug: ${has_debug}
+
+# Test multiple checks
+env.set name=var1 value="yes"
+env.set name=var2 value="yes"
+isset var=var1 result=check1
+isset var=var2 result=check2
+echo check1: ${check1}, check2: ${check2}
