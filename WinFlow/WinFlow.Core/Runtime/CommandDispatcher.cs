@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using Microsoft.Win32;
 using ExecutionContext = WinFlow.Core.Model.ExecutionContext;
@@ -502,6 +503,157 @@ namespace WinFlow.Core.Runtime
                     ctx.Environment[varName] = result;
                 else
                     ctx.Log(result);
+            });
+
+            // JSON module
+            Register("json.parse", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("json.parse requires text=<json>");
+                try
+                {
+                    var doc = JsonDocument.Parse(text);
+                    var json = doc.RootElement.GetRawText();
+                    if (cmd.Args.TryGetValue("var", out var varName))
+                        ctx.Environment[varName] = json;
+                    else
+                        ctx.Log(json);
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException($"json.parse: invalid JSON - {ex.Message}");
+                }
+            });
+
+            Register("json.get", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("json.get requires text=<json>");
+                if (!cmd.Args.TryGetValue("path", out var path))
+                    throw new ArgumentException("json.get requires path=<json.path>");
+                try
+                {
+                    var doc = JsonDocument.Parse(text);
+                    var paths = path.Split('.', StringSplitOptions.RemoveEmptyEntries);
+                    var current = doc.RootElement;
+                    foreach (var p in paths)
+                    {
+                        if (current.ValueKind == JsonValueKind.Object && current.TryGetProperty(p, out var prop))
+                            current = prop;
+                        else if (current.ValueKind == JsonValueKind.Array && int.TryParse(p, out var idx))
+                            current = current[idx];
+                        else
+                            throw new ArgumentException($"Path not found: {path}");
+                    }
+                    var result = current.GetRawText();
+                    if (cmd.Args.TryGetValue("var", out var varName))
+                        ctx.Environment[varName] = result;
+                    else
+                        ctx.Log(result);
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException($"json.get failed: {ex.Message}");
+                }
+            });
+
+            // HTTP module
+            Register("http.get", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("url", out var url))
+                    throw new ArgumentException("http.get requires url=<URL>");
+                using var http = new HttpClient();
+                var response = http.GetAsync(url).GetAwaiter().GetResult();
+                var content = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = content;
+                else
+                    ctx.Log(content);
+            });
+
+            Register("http.post", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("url", out var url))
+                    throw new ArgumentException("http.post requires url=<URL>");
+                cmd.Args.TryGetValue("body", out var body);
+                using var http = new HttpClient();
+                var content = new StringContent(body ?? "", System.Text.Encoding.UTF8, "application/json");
+                var response = http.PostAsync(url, content).GetAwaiter().GetResult();
+                var result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = result;
+                else
+                    ctx.Log(result);
+            });
+
+            Register("http.put", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("url", out var url))
+                    throw new ArgumentException("http.put requires url=<URL>");
+                cmd.Args.TryGetValue("body", out var body);
+                using var http = new HttpClient();
+                var content = new StringContent(body ?? "", System.Text.Encoding.UTF8, "application/json");
+                var response = http.PutAsync(url, content).GetAwaiter().GetResult();
+                var result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = result;
+                else
+                    ctx.Log(result);
+            });
+
+            // Array module
+            Register("array.split", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("text", out var text))
+                    throw new ArgumentException("array.split requires text=<string>");
+                cmd.Args.TryGetValue("sep", out var sep);
+                sep ??= ",";
+                var parts = text.Split(sep);
+                var arrayJson = JsonSerializer.Serialize(parts);
+                if (cmd.Args.TryGetValue("var", out var varName))
+                    ctx.Environment[varName] = arrayJson;
+                else
+                    ctx.Log(arrayJson);
+            });
+
+            Register("array.join", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("array", out var arrayJson))
+                    throw new ArgumentException("array.join requires array=<json_array>");
+                cmd.Args.TryGetValue("sep", out var sep);
+                sep ??= ",";
+                try
+                {
+                    var arr = JsonSerializer.Deserialize<string[]>(arrayJson);
+                    var result = string.Join(sep, arr ?? Array.Empty<string>());
+                    if (cmd.Args.TryGetValue("var", out var varName))
+                        ctx.Environment[varName] = result;
+                    else
+                        ctx.Log(result);
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException($"array.join failed: {ex.Message}");
+                }
+            });
+
+            Register("array.length", (cmd, ctx) =>
+            {
+                if (!cmd.Args.TryGetValue("array", out var arrayJson))
+                    throw new ArgumentException("array.length requires array=<json_array>");
+                try
+                {
+                    var doc = JsonDocument.Parse(arrayJson);
+                    var length = doc.RootElement.GetArrayLength().ToString();
+                    if (cmd.Args.TryGetValue("var", out var varName))
+                        ctx.Environment[varName] = length;
+                    else
+                        ctx.Log(length);
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException($"array.length failed: {ex.Message}");
+                }
             });
 
             // Include module

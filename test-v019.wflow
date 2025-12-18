@@ -1,0 +1,18 @@
+// Test v0.1.9 Array and simple features
+array.split text="apple,banana,cherry" sep="," var=FRUITS
+echo message="Fruits: ${FRUITS}"
+
+array.length array="${FRUITS}" var=FRUIT_COUNT
+echo message="Count: ${FRUIT_COUNT}"
+
+array.join array="${FRUITS}" sep=" and " var=FRUIT_LIST
+echo message="List: ${FRUIT_LIST}"
+
+string.contains text="hello world" pattern="world" var=HAS_WORLD
+echo message="Has world: ${HAS_WORLD}"
+
+string.replace text="hello world" from="world" to="WinFlow" var=REPLACED
+echo message="Replaced: ${REPLACED}"
+
+string.length text="test" var=LEN
+echo message="Length of 'test': ${LEN}"

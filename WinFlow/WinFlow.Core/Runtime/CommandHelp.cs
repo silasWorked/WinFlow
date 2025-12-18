@@ -45,6 +45,17 @@ namespace WinFlow.Core.Runtime
             ["string.lower"] = "string.lower - Convert string to lowercase\nUsage: string.lower text=<STR> [var=<VARNAME>]\nExample: string.lower text=\"HELLO\" var=LOWER",
             ["string.trim"] = "string.trim - Remove leading/trailing whitespace\nUsage: string.trim text=<STR> [var=<VARNAME>]\nExample: string.trim text=\"  hello  \" var=TRIMMED",
             
+            ["json.parse"] = "json.parse - Parse and validate JSON\nUsage: json.parse text=<JSON> [var=<VARNAME>]\nExample: json.parse text='{\"key\":\"value\"}' var=DATA",
+            ["json.get"] = "json.get - Extract value from JSON by path\nUsage: json.get text=<JSON> path=<PATH> [var=<VARNAME>]\nPath format: key1.key2 or key1.0 for arrays\nExample: json.get text='{\"user\":{\"name\":\"John\"}}' path=user.name var=NAME",
+            
+            ["http.get"] = "http.get - Make HTTP GET request\nUsage: http.get url=<URL> [var=<VARNAME>]\nExample: http.get url=\"https://api.example.com/data\" var=RESPONSE",
+            ["http.post"] = "http.post - Make HTTP POST request\nUsage: http.post url=<URL> [body=<JSON>] [var=<VARNAME>]\nExample: http.post url=\"https://api.example.com/endpoint\" body='{\"key\":\"value\"}' var=RESPONSE",
+            ["http.put"] = "http.put - Make HTTP PUT request\nUsage: http.put url=<URL> [body=<JSON>] [var=<VARNAME>]\nExample: http.put url=\"https://api.example.com/resource\" body='{\"key\":\"value\"}' var=RESPONSE",
+            
+            ["array.split"] = "array.split - Split string into JSON array\nUsage: array.split text=<STR> [sep=\",\"] [var=<VARNAME>]\nExample: array.split text=\"a,b,c\" sep=\",\" var=ARR",
+            ["array.join"] = "array.join - Join JSON array into string\nUsage: array.join array=<JSON_ARRAY> [sep=\",\"] [var=<VARNAME>]\nExample: array.join array='[\"a\",\"b\",\"c\"]' sep=\"-\" var=RESULT",
+            ["array.length"] = "array.length - Get JSON array length\nUsage: array.length array=<JSON_ARRAY> [var=<VARNAME>]\nExample: array.length array='[1,2,3]' var=LEN",
+            
             ["if"] = "if - Conditional execution\nUsage: if condition=\"<expr>\" body=\"<command>\" [else=\"<command>\"]\nOperators: ==, !=, >, <, exists\nExample: if condition=\"${VAR} == value\" body=\"echo matched\"",
             
             ["include"] = "include - Include commands from another script\nUsage: include path=\"<script.wflow>\"\nExample: include path=\"common.wflow\"",
