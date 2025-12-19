@@ -1,0 +1,27 @@
+name: Build Installer Artifact
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: "8.0.x"
+      - name: Restore
+        run: dotnet restore WinFlow.sln
+      - name: Build publish UI
+        run: |
+          dotnet publish WinFlow.Installer.UI/WinFlow.Installer.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/installer
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: winflow-installer
+          path: artifacts/installer

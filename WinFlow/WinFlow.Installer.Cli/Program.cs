@@ -18,13 +18,66 @@ namespace WinFlow.Installer.Cli
 			var createDesktopDemo = HasArg(args, "--create-desktop-demo");
 			var noAssoc = HasArg(args, "--no-assoc");
 			var noPath = HasArg(args, "--no-path");
+			var doRegisterAssoc = HasArg(args, "--register-assoc");
+			var doUnregisterAssoc = HasArg(args, "--unregister-assoc");
 			var installDir = GetArgValue(args, "--dir") ??
-							 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinFlow");
+					 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinFlow");
 
 			if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 			{
 				Console.Error.WriteLine("This installer supports Windows only.");
 				return 1;
+			}
+
+			if (doUnregisterAssoc)
+			{
+				try
+				{
+					WindowsFileAssociation.Unregister();
+					Console.WriteLine("Association removed.");
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"Association removal failed: {ex.Message}");
+				}
+				return 0;
+			}
+
+			if (doRegisterAssoc)
+			{
+				try
+				{
+					// Allow explicit target via --assoc-target or fallback to installer dir
+					var target = GetArgValue(args, "--assoc-target");
+					string? cliPath;
+					if (!string.IsNullOrWhiteSpace(target))
+					{
+						cliPath = target;
+						if (!File.Exists(cliPath)) throw new InvalidOperationException($"Provided assoc-target not found: {cliPath}");
+					}
+					else
+					{
+						var regSelfDir = AppContext.BaseDirectory;
+						var regCliCandidates = new[]
+						{
+							Path.Combine(regSelfDir, "WinFlow.Cli.exe"),
+							Path.Combine(regSelfDir, "winflow.exe"),
+						};
+						cliPath = null;
+						foreach (var c in regCliCandidates)
+							if (File.Exists(c)) { cliPath = c; break; }
+						if (cliPath == null)
+							throw new InvalidOperationException("CLI executable not found next to installer. Provide path via --assoc-target or place installer next to CLI.");
+					}
+
+					WindowsFileAssociation.Register(cliPath!);
+					Console.WriteLine("Association registered.");
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"Association registration failed: {ex.Message}");
+				}
+				return 0;
 			}
 
 			if (doUninstall)
@@ -101,7 +154,7 @@ namespace WinFlow.Installer.Cli
 			{
 				try
 				{
-					RegisterAssociation(cliTarget);
+					WindowsFileAssociation.Register(cliTarget);
 					Console.WriteLine(".wflow associated to WinFlow.");
 				}
 				catch (Exception ex)
@@ -145,7 +198,7 @@ namespace WinFlow.Installer.Cli
 		{
 			try
 			{
-				UnregisterAssociation();
+				WindowsFileAssociation.Unregister();
 				Console.WriteLine("Association removed.");
 			}
 			catch (Exception ex)
@@ -170,7 +223,7 @@ namespace WinFlow.Installer.Cli
 				{
 					foreach (var f in Directory.GetFiles(installDir))
 					{
-						try { File.Delete(f); } catch { }
+						try { File.Delete(f); } catch (Exception ex) { Console.WriteLine($"Warning: failed to delete {f}: {ex.Message}"); }
 					}
 					Directory.Delete(installDir, recursive: true);
 				}
@@ -185,25 +238,7 @@ namespace WinFlow.Installer.Cli
 			return 0;
 		}
 
-		private static void RegisterAssociation(string cliPath)
-		{
-			var progId = "WinFlow.Script";
-			using var ext = Registry.CurrentUser.CreateSubKey(@"Software\Classes\.wflow");
-			ext!.SetValue(null, progId);
-			using var prog = Registry.CurrentUser.CreateSubKey($@"Software\Classes\{progId}");
-			prog!.SetValue(null, "WinFlow Script");
-			using var icon = Registry.CurrentUser.CreateSubKey($@"Software\Classes\{progId}\DefaultIcon");
-			icon!.SetValue(null, "shell32.dll,70");
-			using var cmd = Registry.CurrentUser.CreateSubKey($@"Software\Classes\{progId}\shell\open\command");
-			cmd!.SetValue(null, $"\"{cliPath}\" \"%1\"");
-		}
 
-		private static void UnregisterAssociation()
-		{
-			var progId = "WinFlow.Script";
-			try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\.wflow"); } catch { }
-			try { Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\{progId}"); } catch { }
-		}
 
 		private static void EnsureUserPath(string dir)
 		{

@@ -4,7 +4,24 @@
 
 ## [0.2.0] - 2024-12-18
 
+## [0.2.6] - 2025-12-19
+
+### 🎯 Added ✨
+- **Installer UI (WinForms)** — graphical installer to manage install/uninstall and options interactively
+- **InstallerService** — shared backend logic for install/uninstall operations and progress reporting
+- **Installer CLI flags**: `--register-assoc`, `--unregister-assoc`, `--assoc-target` for file association management (per-user)
+- **Context menu verbs**: Run with WinFlow / Debug with WinFlow (registered for `.wflow` files)
+- **Tests**: add integration tests for installer association roundtrip
+
+### 🔄 Changed
+- Improve installer error handling and logging
+- Add publishing GitHub Action to produce installer artifact (single-file EXE)
+
+---
+
 ## [0.2.3] - 2024-12-18
+
+> Фактическая версия CLI/Runtime: 0.2.5
 
 ### 🎯 Добавлено ✨
 
@@ -24,8 +41,8 @@
 
 **Расширения существующих модулей:**
 - datetime: кастомные форматы, парсинг, вычисление разности
-- path: имя файла, расширение, слияние путей
-- log: структурированное логирование (info, warn, error, file)
+- path: basename, extension, join(parts)
+- log: структурированное логирование (log.config + info/debug/warning/error)
 
 **Полный набор тестов:**
 - 9 новых .wflow файлов в `/tests`

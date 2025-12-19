@@ -116,7 +116,7 @@ input.choice prompt="Pick" options="red,green,blue" var=COLOR
 **Команды:**
 - `input.text prompt=<msg> [default=<v>] [var=<name>]` — текст
 - `input.password prompt=<msg> [var=<name>]` — пароль (скрытый)
-- `input.confirm prompt=<msg> [default=yes|no] [var=<name>]` — да/нет
+- `input.confirm prompt=<msg> [default=yes|no] [var=<name>]` — да/нет (по умолчанию no)
 - `input.choice prompt=<msg> options=<a,b,c> [var=<name>]` — выбор
 
 ---
@@ -250,6 +250,17 @@ nav_order: 3
 ### net download
 - Назначение: скачать файл по HTTP(S)
 - Сигнатура: `net download url=<URL> path=<FILE>`
+
+## Log
+
+### log config
+- Назначение: настроить уровень/формат/файл логирования
+- Сигнатура: `log config level=<INFO|DEBUG|WARNING|ERROR> [file=<path>] [format="[%TIME%] %LEVEL% - %MESSAGE%"]`
+
+### log info / debug / warning / error
+- Назначение: вывести сообщение с уровнем
+- Сигнатура: `log.info message=<TEXT>`, `log.debug message=<TEXT>`, `log.warning message=<TEXT>`, `log.error message=<TEXT>`
+- Примечание: `log.debug` выводится при level=DEBUG или флаге --verbose
 
 ## Loop
 

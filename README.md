@@ -140,6 +140,8 @@ cleanup()
 - [**Команды**](docs/commands.md) — Справочник по всем командам
 - [**Функции**](docs/functions.md) — Работа с функциями
 - [**CLI**](docs/cli.md) — Параметры командной строки
+- [Installer file associations](docs/installer-associations.md) — How to register `.wflow` file association (per-user)
+- [Installer UI](docs/installer-ui.md) — Graphical installer for Windows (MVP)
 - [**Примеры**](docs/examples.md) — Готовые примеры скриптов
 - [**FAQ**](docs/faq.md) — Часто задаваемые вопросы
 - [**Установка**](docs/install.md) — Детальная инструкция по установке

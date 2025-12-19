@@ -117,16 +117,38 @@ WinFlow/
 
 ## Процесс разработки
 
-### 1. Создать feature branch
+### 1. Fork-and-pull flow (recommended)
+
+Follow these steps to contribute using a fork (recommended for most contributors):
 
 ```powershell
-# Обновить main
-git checkout main
-git pull upstream main
+# 0. Fork the repository on GitHub (button on the project page)
 
-# Создать новую ветку
-git checkout -b feature/my-awesome-feature
+# 1. Clone your fork
+git clone https://github.com/YOUR_USERNAME/WinFlow.git
+cd WinFlow
+
+# 2. Add upstream remote (if not already)
+git remote add upstream https://github.com/silasWorked/WinFlow.git
+
+# 3. Create a feature branch from upstream/main
+git fetch upstream
+git checkout -b feature/short-descriptive-name upstream/main
+
+# 4. Make small, focused commits and keep your branch up-to-date:
+# Commit often with clear messages (see Commit Messages section)
+# If upstream/main advanced, rebase or merge regularly
+git fetch upstream
+git rebase upstream/main   # or: git merge upstream/main
+
+# 5. Push to your fork and open a Pull Request
+git push origin feature/short-descriptive-name
+# Then open a PR on GitHub comparing your branch to upstream/main
 ```
+
+Notes:
+- Branch naming: `feature/<short>`, `fix/<short>`, `chore/<short>`.
+- Prefer small PRs (< 500 changed lines) for easier review.
 
 ### 2. Внести изменения
 
